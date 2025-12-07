@@ -1,0 +1,57 @@
+# Vagrantfile
+Vagrant.configure("2") do |config|
+  # Use Ubuntu 22.04 LTS
+  config.vm.box = "ubuntu/jammy64"
+
+  # VM resources
+  # config.vm.network "private_network", type: "dhcp"
+  # config.vm.network "public_network", bridge: "Wi-Fi"
+  config.vm.network "forwarded_port", guest: 8081, host: 8089
+  config.vm.provider "virtualbox" do |vb|
+    vb.memory = "4096"
+    vb.cpus = 2
+  end
+
+  # Provisioning script
+  config.vm.provision "shell", inline: <<-SHELL
+    #!/usr/bin/env bash
+    set -e
+
+    echo "Updating packages..."
+    sudo apt-get update -y
+    sudo apt-get upgrade -y
+
+    echo "Installing dependencies..."
+    sudo apt-get install -y curl apt-transport-https ca-certificates conntrack socat gnupg lsb-release software-properties-common
+
+    echo "Installing Docker..."
+    curl -fsSL https://get.docker.com -o get-docker.sh
+    sh get-docker.sh
+    sudo usermod -aG docker vagrant
+    rm get-docker.sh
+
+    echo "Installing kubectl..."
+    curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+    chmod +x kubectl
+    sudo mv kubectl /usr/local/bin/
+
+    echo "Installing Minikube..."
+    curl -Lo minikube https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+    chmod +x minikube
+    sudo mv minikube /usr/local/bin/
+
+    echo "Starting Minikube as vagrant (non-root) with reduced memory..."
+    # Start a new login shell so the updated docker group is applied to vagrant
+    sudo -u vagrant -H bash -lc 'minikube start --driver=docker --memory=2048 --cpus=2'
+
+    echo "Installing Flux CLI..."
+    curl -s https://fluxcd.io/install.sh | sudo bash
+
+    echo "Verifying installations..."
+    kubectl version --client
+    minikube version
+    flux --version
+
+    echo "Setup complete!"
+  SHELL
+end
