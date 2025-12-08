@@ -1,0 +1,18 @@
+[Unit]
+Description=Minikube Kubernetes VM
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+User={{ k8s_user }}
+Group=docker
+Environment="HOME=/home/{{ k8s_user }}"
+Environment="KUBECONFIG=/home/{{ k8s_user }}/.kube/config"
+ExecStart=/usr/local/bin/minikube start --driver={{ minikube_driver }} --memory={{ minikube_memory }} --cpus={{ minikube_cpus }}
+ExecStop=/usr/local/bin/minikube stop
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

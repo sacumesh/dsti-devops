@@ -1,0 +1,23 @@
+---
+
+- name: Download Docker installation script
+  get_url:
+    url: "{{ docker_install_script_url }}"
+    dest: /tmp/get-docker.sh
+    mode: "0755"
+
+- name: Run Docker installation script
+  command: sh /tmp/get-docker.sh
+  args:
+    creates: /usr/bin/docker
+
+- name: Add user to docker group
+  user:
+    name: "{{ k8s_user }}"
+    groups: docker
+    append: yes
+
+- name: Remove docker installer script
+  file:
+    path: /tmp/get-docker.sh
+    state: absent
