@@ -1,0 +1,61 @@
+# dashboard service
+apiVersion: v1
+kind: Service
+metadata:
+  name: dashboard
+  labels:
+    app: dashboard
+spec:
+  type: ClusterIP
+  ports:
+  - port: 5000
+    targetPort: 5000
+    name: http
+  selector:
+    app: dashboard
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: task-dashboard
+  labels:
+    account: dashboard
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dashboard-v1
+  labels:
+    app: dashboard
+    version: v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dashboard
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: dashboard
+        version: v1
+    spec:
+      serviceAccountName: task-dashboard
+      containers:
+      - name: dashboard
+        image: sacumesh/task-dashboard:1.0.0
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 5000
+          name: http
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        env:
+        - name: MANAGER_API_URL
+          value: "http://manager:8080/api/"
+---

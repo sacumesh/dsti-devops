@@ -1,0 +1,99 @@
+---
+# mariadb service
+apiVersion: v1
+kind: Service
+metadata:
+  name: mariadb
+  labels:
+    app: mariadb
+    service: mariadb
+spec:
+  type: ClusterIP
+  ports:
+  - port: 3306
+    targetPort: 3306
+    name: mysql
+  selector:
+    app: mariadb
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: task-mariadb
+  labels:
+    account: mariadb
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mariadb-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mariadb-v1
+  labels:
+    app: mariadb
+    version: v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mariadb
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: mariadb
+        version: v1
+    spec:
+      serviceAccountName: task-mariadb
+      containers:
+      - name: mariadb
+        image: mariadb:10.6
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 3306
+          name: mysql
+        volumeMounts:
+        - name: mariadb-storage
+          mountPath: /var/lib/mysql
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        env:
+        - name: MARIADB_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: database-secret
+              key: db-root-password
+        - name: MARIADB_USER
+          valueFrom:
+            configMapKeyRef:
+              name: database-config
+              key: db-user
+        - name: MARIADB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: database-secret
+              key: db-password
+        - name: MARIADB_DATABASE
+          valueFrom:
+            configMapKeyRef:
+              name: database-config
+              key: db-name
+      volumes:
+      - name: mariadb-storage
+        persistentVolumeClaim:
+          claimName: mariadb-pvc
+      

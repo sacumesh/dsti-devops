@@ -1,0 +1,130 @@
+---
+# manager service
+apiVersion: v1
+kind: Service
+metadata:
+  name: manager
+  labels:
+    app: manager
+    service: manager
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8080
+    targetPort: 8080
+    name: http
+  selector:
+    app: manager
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: task-manager
+  labels:
+    account: manager
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: manager-v1
+  labels:
+    app: manager
+    version: v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: manager
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: manager
+        version: v1
+    spec:
+      serviceAccountName: task-manager
+      containers:
+      - name: manager
+        image: sacumesh/task-manager:1.0.0
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+          name: http
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        env:
+        - name: DATASOURCE_URL
+          value: "jdbc:mariadb://mariadb:3306"
+        - name: DATABASE_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: database-config
+              key: db-name
+        - name: DATABASE_USER
+          valueFrom:
+            configMapKeyRef:
+              name: database-config
+              key: db-user
+        - name: DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: database-secret
+              key: db-password
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: manager-v2
+  labels:
+    app: manager
+    version: v2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: manager
+      version: v2
+  template:
+    metadata:
+      labels:
+        app: manager
+        version: v2
+    spec:
+      serviceAccountName: task-manager
+      containers:
+      - name: manager
+        image: sacumesh/task-manager:1.0.0
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+          name: http
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        env:
+        - name: DATASOURCE_URL
+          value: "jdbc:mariadb://mariadb:3306"
+        - name: DATABASE_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: database-config
+              key: db-name
+        - name: DATABASE_USER
+          valueFrom:
+            configMapKeyRef:
+              name: database-config
+              key: db-user
+        - name: DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: database-secret
+              key: db-password
