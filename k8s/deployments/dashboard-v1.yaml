@@ -1,30 +1,8 @@
-# dashboard service
-apiVersion: v1
-kind: Service
-metadata:
-  name: dashboard
-  labels:
-    app: dashboard
-spec:
-  type: ClusterIP
-  ports:
-  - port: 5000
-    targetPort: 5000
-    name: http
-  selector:
-    app: dashboard
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: task-dashboard
-  labels:
-    account: dashboard
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: dashboard-v1
+  namespace: default
   labels:
     app: dashboard
     version: v1
@@ -40,7 +18,7 @@ spec:
         app: dashboard
         version: v1
     spec:
-      serviceAccountName: task-dashboard
+      serviceAccountName: dashboard-sa
       containers:
       - name: dashboard
         image: sacumesh/task-dashboard:1.0.0
@@ -58,4 +36,3 @@ spec:
         env:
         - name: MANAGER_API_URL
           value: "http://manager:8080/api/"
----
