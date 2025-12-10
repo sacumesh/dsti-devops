@@ -1,0 +1,18 @@
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: manager-vs
+  namespace: default
+spec:
+  hosts:
+  - manager
+  http:
+  - route:
+    - destination:
+        host: manager
+        subset: v1
+      weight: 20
+    - destination:
+        host: manager
+        subset: v2
+      weight: 80
