@@ -1,9 +1,12 @@
 ---
+# Database ConfigMap
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: database-config
+  namespace: default
+  labels:
+    app: database
 data:
   db-user: "user"
   db-name: "test"
----
