@@ -1,43 +1,8 @@
----
-# mariadb service
-apiVersion: v1
-kind: Service
-metadata:
-  name: mariadb
-  labels:
-    app: mariadb
-    service: mariadb
-spec:
-  type: ClusterIP
-  ports:
-  - port: 3306
-    targetPort: 3306
-    name: mysql
-  selector:
-    app: mariadb
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: task-mariadb
-  labels:
-    account: mariadb
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: mariadb-pvc
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 1Gi
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: mariadb-v1
+  namespace: default
   labels:
     app: mariadb
     version: v1
@@ -53,7 +18,7 @@ spec:
         app: mariadb
         version: v1
     spec:
-      serviceAccountName: task-mariadb
+      serviceAccountName: mariadb-sa
       containers:
       - name: mariadb
         image: mariadb:10.6
@@ -96,4 +61,3 @@ spec:
       - name: mariadb-storage
         persistentVolumeClaim:
           claimName: mariadb-pvc
-      
