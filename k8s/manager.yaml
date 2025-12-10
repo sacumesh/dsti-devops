@@ -128,3 +128,37 @@ spec:
             secretKeyRef:
               name: database-secret
               key: db-password
+---
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: manager-destination
+  namespace: default
+spec:
+  host: manager
+  subsets:
+  - name: v1
+    labels:
+      version: v1
+  - name: v2
+    labels:
+      version: v2
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: manager
+spec:
+  hosts:
+  - manager
+  http:
+  - route:
+    - destination:
+        host: manager
+        subset: v1
+      weight: 20
+    - destination:
+        host: manager
+        subset: v2
+      weight: 80
+---

@@ -1,0 +1,3 @@
+dependencies:
+  - role: minkube
+  - role: kubectl

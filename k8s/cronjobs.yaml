@@ -1,0 +1,24 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: synthetic-traffic
+spec:
+  schedule: "*/1 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: curl-dashboard
+            image: curlimages/curl
+            args: ["-s", "http://dashboard"]
+
+          - name: curl-manager
+            image: curlimages/curl
+            args: ["-s", "http://manager"]
+
+          - name: curl-mariadb
+            image: curlimages/curl
+            args: ["-s", "http://mariadb"]
+
+          restartPolicy: Never

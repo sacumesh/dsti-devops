@@ -1,0 +1,5 @@
+---
+- hosts: all
+  tasks:
+    - name: Test Ansible Local
+      command: echo "Ansible is working inside the VM!"
