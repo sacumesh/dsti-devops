@@ -1,0 +1,6 @@
+[submodule "apps/task-manager"]
+	path = apps/task-manager
+	url = https://github.com/sacumesh/devops-task-manager.git
+[submodule "apps/task-dashboard"]
+	path = apps/task-dashboard
+	url = https://github.com/sacumesh/devops-task-dashboard.git
