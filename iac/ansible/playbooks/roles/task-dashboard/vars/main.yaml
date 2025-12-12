@@ -19,8 +19,8 @@ server_port: "5000"
 # -----------------------------
 # Python / virtual environment
 # -----------------------------
-python_version: python3
-venv_path: "{{ app_home }}/{{ repo_name }}/venv"
+conda_path: /home/pythonapp/miniconda3
+python_version: "3.11"
 
 # -----------------------------
 # Optional: wait time for DB

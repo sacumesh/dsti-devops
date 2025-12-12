@@ -27,11 +27,35 @@
     state: present
     update_cache: yes
   loop:
-    - python3
-    - python3-venv
-    - python3-pip
+    - wget
+    - bzip2
     - git
     - build-essential
+    - curl
+
+# -----------------------------
+# Install Miniconda (if not already installed)
+# -----------------------------
+- name: Download Miniconda installer
+  get_url:
+    url: https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+    dest: /tmp/miniconda.sh
+    mode: '0755'
+
+- name: Install Miniconda as root
+  command: bash /tmp/miniconda.sh -b -p "{{ conda_path }}"
+  args:
+    creates: "{{ conda_path }}/bin/conda"
+  become: yes
+  become_user: root
+
+- name: Fix ownership of Miniconda directory
+  file:
+    path: "{{ conda_path }}"
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    recurse: yes
+
 
 # -----------------------------
 # Clone repository
@@ -55,30 +79,37 @@
   become: yes
 
 # -----------------------------
-# Setup Python virtual environment and install dependencies
+# Create Conda environment as root
 # -----------------------------
-- name: Create Python virtual environment
-  command: python3 -m venv "{{ app_home }}/{{ repo_name }}/venv"
+- name: Accept Conda ToS for main channel
+  command: "{{ conda_path }}/bin/conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main"
+  become: yes
+
+- name: Accept Conda ToS for R channel
+  command: "{{ conda_path }}/bin/conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r"
+  become: yes
+
+
+- name: Create Conda environment for the app (as root)
+  command: "{{ conda_path }}/bin/conda create -y -p {{ app_home }}/{{ repo_name }}/conda_env python={{ python_version }}"
   args:
-    creates: "{{ app_home }}/{{ repo_name }}/venv"
+    creates: "{{ app_home }}/{{ repo_name }}/conda_env"
   become: yes
-  become_user: root
 
-- name: Install Python dependencies in virtual environment
-  pip:
-    requirements: "{{ app_home }}/{{ repo_name }}/requirements.txt"
-    virtualenv: "{{ app_home }}/{{ repo_name }}/venv"
-    virtualenv_command: python3 -m venv
-    virtualenv_python: python3
+- name: Install Python dependencies in Conda environment (as root)
+  command: "{{ conda_path }}/bin/conda run -p {{ app_home }}/{{ repo_name }}/conda_env pip install -r {{ app_home }}/{{ repo_name }}/requirements.txt"
   become: yes
-  become_user: root
 
-- name: Fix ownership of virtual environment
+# -----------------------------
+# Fix ownership of Conda environment
+# -----------------------------
+- name: Set ownership of Conda environment to app user
   file:
-    path: "{{ app_home }}/{{ repo_name }}/venv"
+    path: "{{ app_home }}/{{ repo_name }}/conda_env"
     owner: "{{ app_user }}"
     group: "{{ app_group }}"
     recurse: yes
+
 
 # -----------------------------
 # Create systemd service for Python app
@@ -92,7 +123,7 @@
     content: |
       [Unit]
       Description=Python Frontend Dashboard Service
-      After=network.target
+      After=network.target docker.service
       Wants=docker.service
 
       [Service]
@@ -104,7 +135,7 @@
       Environment="MANAGER_PORT={{ manager_port }}"
       Environment="MANAGER_HOST={{ manager_host }}"
       Environment="DATABASE_PASSWORD={{ database_password }}"
-      ExecStart={{ venv_path }}/bin/python src/main.py
+      ExecStart={{ conda_path }}/bin/conda run -p {{ app_home }}/{{ repo_name }}/conda_env python src/main.py
       Restart=always
       RestartSec=10
       StandardOutput=syslog
