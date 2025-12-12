@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dashboard-v1
+  namespace: default
+  labels:
+    app: dashboard
+    version: v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dashboard
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: dashboard
+        version: v1
+    spec:
+      serviceAccountName: dashboard-sa
+      containers:
+      - name: dashboard
+        image: sacumesh/task-dashboard:1.0.0
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 5000
+          name: http
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        env:
+        - name: MANAGER_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: manager-config
+              key: manager-host
+        - name: MANAGER_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: manager-config
+              key: manager-port

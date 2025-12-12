@@ -1,0 +1,11 @@
+---
+
+nginx_package_name: nginx
+nginx_service_name: nginx
+
+proxy_server_name: "_"               # domain or "_"
+proxy_listen_port: 80
+proxy_pass_url: "http://localhost:3000"  # your backend service
+
+nginx_error_log: "/var/log/nginx/error.log"
+nginx_access_log: "/var/log/nginx/access.log"

@@ -1,0 +1,17 @@
+# Vagrantfile
+Vagrant.configure("2") do |config|
+  # Use Ubuntu 22.04 LTS
+  config.vm.box = "ubuntu/jammy64"
+
+
+  config.vm.network "forwarded_port", guest: 8081, host: 8089
+  config.vm.provider "virtualbox" do |vb|
+    vb.memory = "4096"
+    vb.cpus = 2
+  end
+
+  config.vm.provision "ansible_local" do |ansible|
+    ansible.playbook = "ansible/site.yml"  # your top-level playbook
+    ansible.become = true
+  end
+end

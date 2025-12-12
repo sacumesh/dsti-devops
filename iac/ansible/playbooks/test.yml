@@ -1,0 +1,69 @@
+---
+- name: Install Minikube and GitLab Runner
+  hosts: all
+  become: yes
+  tasks:
+    - name: Install required dependencies for Minikube
+      apt:
+        name:
+          - curl
+          - apt-transport-https
+          - virtualbox
+        state: present
+        update_cache: yes
+
+    - name: Install Docker (for Minikube)
+      apt:
+        name:
+          - docker.io
+        state: present
+        update_cache: yes
+
+    - name: Add Docker to the system group
+      user:
+        name: "{{ ansible_user }}"
+        groups: docker
+        append: yes
+
+    - name: Download Minikube binary
+      get_url:
+        url: https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+        dest: /usr/local/bin/minikube
+        mode: '0755'
+
+    - name: Check if Minikube is installed
+      command: minikube version
+      register: minikube_version
+      ignore_errors: yes
+    - name: Start Minikube
+      command: minikube start --driver=docker
+      become: false
+      when: minikube_version is failed
+    - name: Install GitLab Runner
+      shell: |
+        curl -L --output /tmp/gitlab-runner.deb https://gitlab-runner-downloads.s3.amazonaws.com/latest/deb/gitlab-runner_amd64.deb
+        dpkg -i /tmp/gitlab-runner.deb
+      args:
+        creates: /usr/bin/gitlab-runner
+      args:
+    - name: Register GitLab Runner with GitLab
+      shell: |
+        gitlab-runner register \
+        --non-interactive \
+        --url "https://gitlab.com/" \
+        --registration-token "{{ gitlab_registration_token }}" \
+        --executor "docker" \
+        --description "minikube-runner" \
+        --docker-image "docker:latest" \
+        --docker-privileged
+      when: 
+        - minikube_version is succeeded
+        - gitlab_registration_token is defined
+        --docker-privileged
+      when: minikube_version is succeeded
+
+    - name: Start GitLab Runner service
+      service:
+        name: gitlab-runner
+        state: started
+        enabled: yes

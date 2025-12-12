@@ -1,0 +1,25 @@
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: manager
+  namespace: default
+  labels:
+    app: manager
+    managed-by: istio
+spec:
+  hosts:
+    - manager.default.svc.cluster.local
+  gateways:
+    - mesh-gateway
+  http:
+    - name: "manager-v1-v2-split"
+      route:
+        - destination:
+            host: manager
+            subset: v1
+          weight: 20
+        - destination:
+            host: manager
+            subset: v2
+          weight: 80
