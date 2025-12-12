@@ -1,19 +1,7 @@
 # -----------------------------
-# Docker users and groups
-# -----------------------------
-docker_users:
-  - "{{ ansible_user | default('') }}"
-  - "vagrant"               # Add any other users that need Docker access
-
-# -----------------------------
 # MariaDB Docker container
 # -----------------------------
 mariadb_container_name: mariadb
 mariadb_version: "10.6"
 mariadb_root_password: root
-mariadb_database: tasks
-mariadb_user: user
-mariadb_password: test
-mariadb_host: 127.0.0.1
-mariadb_port: 3306
 wait_for_db_timeout: 60          # Seconds to wait for MariaDB to become ready

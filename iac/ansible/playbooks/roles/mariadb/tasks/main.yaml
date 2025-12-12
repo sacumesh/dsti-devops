@@ -83,17 +83,11 @@
     restart_policy: unless-stopped
     env:
       MARIADB_ROOT_PASSWORD: "{{ mariadb_root_password }}"
-      MARIADB_DATABASE: "{{ mariadb_database }}"
-      MARIADB_USER: "{{ mariadb_user }}"
-      MARIADB_PASSWORD: "{{ mariadb_password }}"
+      MARIADB_DATABASE: "{{ database_name | default('tasks') }}"
+      MARIADB_USER: "{{ database_user }}"
+      MARIADB_PASSWORD: "{{ database_password }}"
     published_ports:
-      - "3306:3306"
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 10s
-      retries: 5
-      start_period: 10s
-      timeout: 5s
+      - "3306:{{ database_port | default(3306) }}"
 
 # -----------------------------
 # Wait for MariaDB to be ready
