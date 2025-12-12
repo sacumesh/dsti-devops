@@ -15,7 +15,6 @@ repo_branch: main                # Branch to checkout
 # -----------------------------
 # Spring Boot / server settings
 # -----------------------------
-manager_port: 8080               # Spring Boot server port
 server_address: 0.0.0.0          # Bind address for Spring Boot (0.0.0.0 = all interfaces)
 
 # -----------------------------

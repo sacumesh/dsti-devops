@@ -1,7 +1,7 @@
 # -----------------------------
-# Ensure the application user exists (runtime user only)
+# Ensure the application user exists
 # -----------------------------
-- name: Ensure python app user exists
+- name: Ensure springboot user exists
   user:
     name: "{{ app_user }}"
     shell: /bin/bash
@@ -11,17 +11,29 @@
   file:
     path: "{{ item }}"
     state: directory
-    owner: root
-    group: root
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
     mode: '0755'
   loop:
     - "{{ app_home }}"
     - "/var/log/{{ app_user }}"
 
 # -----------------------------
+# Install system dependencies (root)
+# -----------------------------
+- name: Install required packages 
+  apt:
+    name:
+      - openjdk-17-jdk
+      - maven
+      - git
+    state: present
+    update_cache: yes
+
+# -----------------------------
 # Install system dependencies as root
 # -----------------------------
-- name: Update apt cache and install dependencies
+- name: Update apt cache and install dependencies (root)
   apt:
     name: "{{ item }}"
     state: present
@@ -36,13 +48,13 @@
 # -----------------------------
 # Install Miniconda as root
 # -----------------------------
-- name: Download Miniconda installer
+- name: Download Miniconda installer (root)
   get_url:
     url: https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
     dest: /tmp/miniconda.sh
     mode: '0755'
 
-- name: Install Miniconda
+- name: Install Miniconda (root)
   command: bash /tmp/miniconda.sh -b -p "{{ conda_path }}"
   args:
     creates: "{{ conda_path }}/bin/conda"
@@ -55,7 +67,7 @@
   set_fact:
     repo_name: "{{ repo_url | basename | regex_replace('\\.git$', '') }}"
 
-- name: Clone the repository
+- name: Clone the repository (root)
   git:
     repo: "{{ repo_url }}"
     dest: "{{ app_home }}/{{ repo_name }}"
@@ -67,21 +79,21 @@
 # -----------------------------
 # Accept Conda ToS and create environment as root
 # -----------------------------
-- name: Accept Conda ToS for main channel
+- name: Accept Conda ToS for main channel (root)
   command: "{{ conda_path }}/bin/conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main"
   become: yes
 
-- name: Accept Conda ToS for R channel
+- name: Accept Conda ToS for R channel (root)
   command: "{{ conda_path }}/bin/conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r"
   become: yes
 
-- name: Create Conda environment for the app
+- name: Create Conda environment for the app (root)
   command: "{{ conda_path }}/bin/conda create -y -p {{ app_home }}/{{ repo_name }}/conda_env python={{ python_version }}"
   args:
     creates: "{{ app_home }}/{{ repo_name }}/conda_env"
   become: yes
 
-- name: Install Python dependencies in Conda environment
+- name: Install Python dependencies in Conda environment (root)
   command: "{{ conda_path }}/bin/conda run -p {{ app_home }}/{{ repo_name }}/conda_env pip install -r {{ app_home }}/{{ repo_name }}/requirements.txt"
   become: yes
 
@@ -115,7 +127,7 @@
 
       APP_DIR="{{ app_home }}/{{ repo_name }}"
       CONDA_ENV="$APP_DIR/conda_env"
-      HEALTH_URL="http://127.0.0.1:{{ server_port }}/health"
+      HEALTH_URL="http://127.0.0.1:{{ task_dashboard_port }}/health"
 
       source {{ conda_path }}/bin/activate "$CONDA_ENV"
 
@@ -155,17 +167,18 @@
       Wants=docker.service
 
       [Service]
-      Type=simple
+      Type=notify
       User={{ app_user }}
       Group={{ app_group }}
       WorkingDirectory={{ app_home }}/{{ repo_name }}
-      Environment="SERVER_PORT={{ server_port }}"
-      Environment="MANAGER_PORT={{ manager_port }}"
-      Environment="MANAGER_HOST={{ manager_host }}"
+      Environment="SERVER_PORT={{ task_dashboard_port }}"
+      Environment="MANAGER_PORT={{ task_manager_port }}"
+      Environment="MANAGER_HOST={{ task_manager_host }}"
       Environment="DATABASE_PASSWORD={{ database_password }}"
       ExecStart={{ app_home }}/{{ repo_name }}/start.sh
       Restart=always
       RestartSec=10
+      NotifyAccess=all
       StandardOutput=syslog
       StandardError=syslog
       SyslogIdentifier={{ app_name }}

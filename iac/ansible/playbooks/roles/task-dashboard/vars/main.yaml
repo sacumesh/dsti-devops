@@ -1,20 +1,12 @@
 # -----------------------------
 # Application identity
 # -----------------------------
-app_name: devops-task-dashboard        # systemd service name
+app_name: task-dashboard        # systemd service name
 app_user: pythonapp                    # Linux user to run the app
 app_group: pythonapp                   # Linux group
 app_home: /opt/python_frontend         # Base directory for application
 repo_url: "https://github.com/sacumesh/devops-task-dashboard.git"
 repo_branch: main                 # Port for the Python web server
-
-# -----------------------------
-# Database configuration (MariaDB)
-# -----------------------------
-manager_host: "127.0.0.1"
-manager_port: "8080"
-
-server_port: "5000"
 
 # -----------------------------
 # Python / virtual environment

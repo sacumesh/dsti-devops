@@ -83,7 +83,7 @@
     restart_policy: unless-stopped
     env:
       MARIADB_ROOT_PASSWORD: "{{ mariadb_root_password }}"
-      MARIADB_DATABASE: "{{ database_name | default('tasks') }}"
+      MARIADB_DATABASE: "{{ database_name }}"
       MARIADB_USER: "{{ database_user }}"
       MARIADB_PASSWORD: "{{ database_password }}"
     published_ports:

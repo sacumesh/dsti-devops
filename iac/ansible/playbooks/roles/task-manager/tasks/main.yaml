@@ -1,3 +1,6 @@
+# -----------------------------
+# Ensure the application user exists
+# -----------------------------
 - name: Ensure springboot user exists
   user:
     name: "{{ app_user }}"
@@ -15,26 +18,26 @@
     - "{{ app_home }}"
     - "/var/log/{{ app_user }}"
 
-- name: Update apt cache and install dependencies
+# -----------------------------
+# Install system dependencies (root)
+# -----------------------------
+- name: Install required packages
   apt:
-    name: "{{ item }}"
+    name:
+      - openjdk-17-jdk
+      - maven
+      - git
     state: present
     update_cache: yes
-  loop:
-    - openjdk-17-jdk
-    - maven
-    - git
 
+# -----------------------------
+# Build Stage (run as root)
+# -----------------------------
 - name: Determine repo name from URL
   set_fact:
     repo_name: "{{ repo_url | basename | regex_replace('\\.git$', '') }}"
 
-- name: Mark Git repository as safe
-  command: git config --global --add safe.directory "{{ app_home }}/{{ repo_name }}"
-  become: yes
-  when: repo_url is defined
-
-- name: Clone the repository
+- name: Clone the repository (root)
   git:
     repo: "{{ repo_url }}"
     dest: "{{ app_home }}/{{ repo_name }}"
@@ -43,13 +46,13 @@
     update: yes
   become: yes
 
-- name: Build Spring Boot project with Maven
+- name: Build Spring Boot project (root)
   command: mvn clean package -DskipTests
   args:
     chdir: "{{ app_home }}/{{ repo_name }}"
   become: yes
 
-- name: Detect built JAR automatically
+- name: Detect built JAR automatically (root)
   find:
     paths: "{{ app_home }}/{{ repo_name }}/target"
     patterns: "*.jar"
@@ -61,24 +64,56 @@
     msg: "No JAR found in {{ app_home }}/{{ repo_name }}/target"
   when: jar_files.matched == 0
 
-- name: Create symlink to standard name app.jar
+- name: Create symlink to standard name app.jar (root)
   file:
     src: "{{ jar_files.files[0].path }}"
     dest: "{{ app_home }}/{{ repo_name }}/target/app.jar"
     state: link
     force: yes
+  become: yes
 
 - name: Set app_jar_path fact
   set_fact:
     app_jar_path: "{{ app_home }}/{{ repo_name }}/target/app.jar"
 
-- name: Wait for MariaDB Docker container to be ready
-  wait_for:
-    host: "{{ database_host }}"
-    port: "{{ database_port }}"
-    timeout: 60
+# -----------------------------
+# Health-check wrapper script
+# -----------------------------
+- name: Copy health-check wrapper script
+  copy:
+    dest: "{{ app_home }}/{{ repo_name }}/start.sh"
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: '0755'
+    content: |
+      #!/bin/bash
+      APP_JAR="{{ app_jar_path }}"
+      HEALTH_URL="http://127.0.0.1:{{ task_manager_port }}/actuator/health"
 
-- name: Create systemd service for Spring Boot application
+      java -jar "$APP_JAR" &
+      APP_PID=$!
+
+      echo "Waiting for /actuator/health endpoint..."
+      for i in {1..60}; do
+          if curl -sf "$HEALTH_URL" > /dev/null; then
+              echo "Application is healthy"
+              systemd-notify --ready
+              break
+          fi
+          sleep 4
+      done
+
+      if ! kill -0 $APP_PID 2>/dev/null; then
+          echo "Application exited prematurely"
+          exit 1
+      fi
+
+      wait $APP_PID
+
+# -----------------------------
+# Create systemd service
+# -----------------------------
+- name: Create systemd service for Spring Boot
   copy:
     dest: "/etc/systemd/system/{{ app_name }}.service"
     owner: root
@@ -87,24 +122,24 @@
     content: |
       [Unit]
       Description=Spring Boot Task Manager Service
-      After=network.target
+      After=network.target docker.service
       Wants=docker.service
 
       [Service]
-      Type=simple
+      Type=notify
       User={{ app_user }}
       Group={{ app_group }}
       WorkingDirectory={{ app_home }}/{{ repo_name }}
-      Environment="SERVER_PORT={{ manager_port }}"
-      Environment="SERVER_ADDRESS=0.0.0.0"
+      Environment="SERVER_PORT={{ task_manager_port }}"
       Environment="DATABASE_HOST={{ database_host }}"
       Environment="DATABASE_PORT={{ database_port }}"
       Environment="DATABASE_NAME={{ database_name }}"
       Environment="DATABASE_USER={{ database_user }}"
       Environment="DATABASE_PASSWORD={{ database_password }}"
-      ExecStart=/usr/bin/java -jar {{ app_jar_path }}
+      ExecStart={{ app_home }}/{{ repo_name }}/start.sh
       Restart=always
       RestartSec=10
+      NotifyAccess=all
       StandardOutput=syslog
       StandardError=syslog
       SyslogIdentifier={{ app_name }}
@@ -112,6 +147,9 @@
       [Install]
       WantedBy=multi-user.target
 
+# -----------------------------
+# Reload systemd and start service
+# -----------------------------
 - name: Reload systemd daemon
   systemd:
     daemon_reload: yes
