@@ -1,4 +1,7 @@
-- name: Install dependencies
+# -----------------------------
+# Install required dependencies
+# -----------------------------
+- name: Install apt dependencies
   apt:
     name:
       - apt-transport-https
@@ -9,17 +12,21 @@
     state: present
     update_cache: yes
 
+# -----------------------------
+# Configure Docker repository
+# -----------------------------
 - name: Add Docker GPG key
-  apt_key:
+  ansible.builtin.apt_key:
     url: https://download.docker.com/linux/ubuntu/gpg
     state: present
 
-- name: Add Docker apt repo
-  apt_repository:
+- name: Add Docker APT repository
+  ansible.builtin.apt_repository:
     repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
     state: present
+    filename: docker
 
-- name: Install Docker packages
+- name: Install Docker Engine and CLI
   apt:
     name:
       - docker-ce
@@ -30,12 +37,18 @@
     state: present
     update_cache: yes
 
-- name: Ensure Docker service is running
+# -----------------------------
+# Ensure Docker service is running
+# -----------------------------
+- name: Ensure Docker service is started and enabled
   service:
     name: docker
     state: started
-    enabled: true
+    enabled: yes
 
+# -----------------------------
+# Docker group and user permissions
+# -----------------------------
 - name: Ensure docker group exists
   group:
     name: docker
@@ -46,29 +59,26 @@
     name: "{{ item }}"
     groups: docker
     append: yes
-  loop:
-    - "{{ ansible_user | default('') }}"
-    - "vagrant"
-  when: item | length > 0
-  notify: reboot
+  loop: "{{ docker_users | default([ansible_user, 'vagrant']) }}"
+  when: item is defined and item != ""
+  become: yes
 
-# Optional: apply group changes for non-interactive use
-- name: Refresh group membership (newgrp)
-  shell: "newgrp docker <<EOF
-    EOF"
-  args:
-    executable: /bin/bash
-
+# -----------------------------
+# Pull MariaDB Docker image
+# -----------------------------
 - name: Pull MariaDB Docker image
   community.docker.docker_image:
     name: mariadb
-    tag: "10.6"
+    tag: "{{ mariadb_version | default('10.6') }}"
     source: pull
 
+# -----------------------------
+# Run MariaDB Docker container
+# -----------------------------
 - name: Run MariaDB container
   community.docker.docker_container:
-    name: mariadb
-    image: mariadb:10.6
+    name: "{{ mariadb_container_name | default('mariadb') }}"
+    image: "mariadb:{{ mariadb_version | default('10.6') }}"
     state: started
     restart_policy: unless-stopped
     env:
@@ -76,5 +86,20 @@
       MARIADB_DATABASE: "{{ mariadb_database }}"
       MARIADB_USER: "{{ mariadb_user }}"
       MARIADB_PASSWORD: "{{ mariadb_password }}"
-    ports:
+    published_ports:
       - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      retries: 5
+      start_period: 10s
+      timeout: 5s
+
+# -----------------------------
+# Wait for MariaDB to be ready
+# -----------------------------
+- name: Wait for MariaDB container to be ready
+  wait_for:
+    host: "{{ mariadb_host | default('127.0.0.1') }}"
+    port: "{{ mariadb_port | default(3306) }}"
+    timeout: "{{ wait_for_db_timeout | default(60) }}"
