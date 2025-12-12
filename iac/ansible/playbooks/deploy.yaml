@@ -4,3 +4,4 @@
   roles:
     - mariadb
     - task-manager
+    - task-dashboard

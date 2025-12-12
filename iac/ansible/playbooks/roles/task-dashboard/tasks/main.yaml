@@ -1,4 +1,128 @@
+# -----------------------------
+# Ensure the application user exists
+# -----------------------------
+- name: Ensure python app user exists
+  user:
+    name: "{{ app_user }}"
+    shell: /bin/bash
+    create_home: yes
 
-- name: Echo a message
-  ansible.builtin.debug:
-    msg: "Hello from Task Dashboard!"
+- name: Ensure application directories exist
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: '0755'
+  loop:
+    - "{{ app_home }}"
+    - "/var/log/{{ app_user }}"
+
+# -----------------------------
+# Install system dependencies
+# -----------------------------
+- name: Update apt cache and install dependencies
+  apt:
+    name: "{{ item }}"
+    state: present
+    update_cache: yes
+  loop:
+    - python3
+    - python3-venv
+    - python3-pip
+    - git
+    - build-essential
+
+# -----------------------------
+# Clone repository
+# -----------------------------
+- name: Determine repo name from URL
+  set_fact:
+    repo_name: "{{ repo_url | basename | regex_replace('\\.git$', '') }}"
+
+- name: Mark Git repository as safe
+  command: git config --global --add safe.directory "{{ app_home }}/{{ repo_name }}"
+  become: yes
+  when: repo_url is defined
+
+- name: Clone the repository
+  git:
+    repo: "{{ repo_url }}"
+    dest: "{{ app_home }}/{{ repo_name }}"
+    version: main
+    force: yes
+    update: yes
+  become: yes
+
+# -----------------------------
+# Setup Python virtual environment and install dependencies
+# -----------------------------
+- name: Create Python virtual environment
+  command: python3 -m venv "{{ app_home }}/{{ repo_name }}/venv"
+  args:
+    creates: "{{ app_home }}/{{ repo_name }}/venv"
+  become: yes
+  become_user: root
+
+- name: Install Python dependencies in virtual environment
+  pip:
+    requirements: "{{ app_home }}/{{ repo_name }}/requirements.txt"
+    virtualenv: "{{ app_home }}/{{ repo_name }}/venv"
+    virtualenv_command: python3 -m venv
+    virtualenv_python: python3
+  become: yes
+  become_user: root
+
+- name: Fix ownership of virtual environment
+  file:
+    path: "{{ app_home }}/{{ repo_name }}/venv"
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    recurse: yes
+
+# -----------------------------
+# Create systemd service for Python app
+# -----------------------------
+- name: Create systemd service for Python frontend
+  copy:
+    dest: "/etc/systemd/system/{{ app_name }}.service"
+    owner: root
+    group: root
+    mode: '0644'
+    content: |
+      [Unit]
+      Description=Python Frontend Dashboard Service
+      After=network.target
+      Wants=docker.service
+
+      [Service]
+      Type=simple
+      User={{ app_user }}
+      Group={{ app_group }}
+      WorkingDirectory={{ app_home }}/{{ repo_name }}
+      Environment="SERVER_PORT={{ server_port }}"
+      Environment="MANAGER_PORT={{ manager_port }}"
+      Environment="MANAGER_HOST={{ manager_host }}"
+      Environment="DATABASE_PASSWORD={{ database_password }}"
+      ExecStart={{ venv_path }}/bin/python src/main.py
+      Restart=always
+      RestartSec=10
+      StandardOutput=syslog
+      StandardError=syslog
+      SyslogIdentifier={{ app_name }}
+
+      [Install]
+      WantedBy=multi-user.target
+
+# -----------------------------
+# Reload systemd and start service
+# -----------------------------
+- name: Reload systemd daemon
+  systemd:
+    daemon_reload: yes
+
+- name: Enable and start Python frontend service
+  systemd:
+    name: "{{ app_name }}"
+    enabled: yes
+    state: started
