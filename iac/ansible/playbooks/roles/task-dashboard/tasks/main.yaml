@@ -1,5 +1,5 @@
 # -----------------------------
-# Ensure the application user exists
+# Ensure the application user exists (runtime user only)
 # -----------------------------
 - name: Ensure python app user exists
   user:
@@ -11,15 +11,15 @@
   file:
     path: "{{ item }}"
     state: directory
-    owner: "{{ app_user }}"
-    group: "{{ app_group }}"
+    owner: root
+    group: root
     mode: '0755'
   loop:
     - "{{ app_home }}"
     - "/var/log/{{ app_user }}"
 
 # -----------------------------
-# Install system dependencies
+# Install system dependencies as root
 # -----------------------------
 - name: Update apt cache and install dependencies
   apt:
@@ -34,7 +34,7 @@
     - curl
 
 # -----------------------------
-# Install Miniconda (if not already installed)
+# Install Miniconda as root
 # -----------------------------
 - name: Download Miniconda installer
   get_url:
@@ -42,32 +42,18 @@
     dest: /tmp/miniconda.sh
     mode: '0755'
 
-- name: Install Miniconda as root
+- name: Install Miniconda
   command: bash /tmp/miniconda.sh -b -p "{{ conda_path }}"
   args:
     creates: "{{ conda_path }}/bin/conda"
   become: yes
-  become_user: root
-
-- name: Fix ownership of Miniconda directory
-  file:
-    path: "{{ conda_path }}"
-    owner: "{{ app_user }}"
-    group: "{{ app_group }}"
-    recurse: yes
-
 
 # -----------------------------
-# Clone repository
+# Clone repository as root
 # -----------------------------
 - name: Determine repo name from URL
   set_fact:
     repo_name: "{{ repo_url | basename | regex_replace('\\.git$', '') }}"
-
-- name: Mark Git repository as safe
-  command: git config --global --add safe.directory "{{ app_home }}/{{ repo_name }}"
-  become: yes
-  when: repo_url is defined
 
 - name: Clone the repository
   git:
@@ -79,7 +65,7 @@
   become: yes
 
 # -----------------------------
-# Create Conda environment as root
+# Accept Conda ToS and create environment as root
 # -----------------------------
 - name: Accept Conda ToS for main channel
   command: "{{ conda_path }}/bin/conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main"
@@ -89,30 +75,72 @@
   command: "{{ conda_path }}/bin/conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r"
   become: yes
 
-
-- name: Create Conda environment for the app (as root)
+- name: Create Conda environment for the app
   command: "{{ conda_path }}/bin/conda create -y -p {{ app_home }}/{{ repo_name }}/conda_env python={{ python_version }}"
   args:
     creates: "{{ app_home }}/{{ repo_name }}/conda_env"
   become: yes
 
-- name: Install Python dependencies in Conda environment (as root)
+- name: Install Python dependencies in Conda environment
   command: "{{ conda_path }}/bin/conda run -p {{ app_home }}/{{ repo_name }}/conda_env pip install -r {{ app_home }}/{{ repo_name }}/requirements.txt"
   become: yes
 
 # -----------------------------
-# Fix ownership of Conda environment
+# Fix ownership of runtime directories
 # -----------------------------
-- name: Set ownership of Conda environment to app user
+- name: Set ownership of runtime directories to app user
   file:
-    path: "{{ app_home }}/{{ repo_name }}/conda_env"
+    path: "{{ item }}"
     owner: "{{ app_user }}"
     group: "{{ app_group }}"
     recurse: yes
+  loop:
+    - "{{ app_home }}/{{ repo_name }}/conda_env"
+    - "/var/log/{{ app_user }}"
+    - "{{ app_home }}/{{ repo_name }}"
 
 
 # -----------------------------
-# Create systemd service for Python app
+# Copy start.sh wrapper
+# -----------------------------
+- name: Copy start.sh wrapper
+  copy:
+    dest: "{{ app_home }}/{{ repo_name }}/start.sh"
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: '0755'
+    content: |
+      #!/bin/bash
+      set -e
+
+      APP_DIR="{{ app_home }}/{{ repo_name }}"
+      CONDA_ENV="$APP_DIR/conda_env"
+      HEALTH_URL="http://127.0.0.1:{{ server_port }}/health"
+
+      source {{ conda_path }}/bin/activate "$CONDA_ENV"
+
+      python "$APP_DIR/src/main.py" &
+      APP_PID=$!
+
+      echo "Waiting for health endpoint..."
+      for i in {1..30}; do
+          if curl -sf "$HEALTH_URL" > /dev/null; then
+              echo "Application is healthy"
+              systemd-notify --ready
+              break
+          fi
+          sleep 2
+      done
+
+      if ! kill -0 $APP_PID 2>/dev/null; then
+          echo "Application exited prematurely"
+          exit 1
+      fi
+
+      wait $APP_PID
+
+# -----------------------------
+# Create systemd service to run app as app user
 # -----------------------------
 - name: Create systemd service for Python frontend
   copy:
@@ -135,7 +163,7 @@
       Environment="MANAGER_PORT={{ manager_port }}"
       Environment="MANAGER_HOST={{ manager_host }}"
       Environment="DATABASE_PASSWORD={{ database_password }}"
-      ExecStart={{ conda_path }}/bin/conda run -p {{ app_home }}/{{ repo_name }}/conda_env python src/main.py
+      ExecStart={{ app_home }}/{{ repo_name }}/start.sh
       Restart=always
       RestartSec=10
       StandardOutput=syslog
