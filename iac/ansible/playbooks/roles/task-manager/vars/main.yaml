@@ -1,13 +1,39 @@
-app_name: task-manager
-app_user: springboot
-app_group: springboot
-manager_port: 8080
+# -----------------------------
+# Application & system settings
+# -----------------------------
+app_name: task-manager          # Name of the systemd service
+app_user: springboot            # Linux user to run the app
+app_group: springboot           # Linux group for the app
+app_home: /opt/springboot       # Base directory for the application
 
-database_host: localhost
-database_port: 3306
-database_name: tasks
-database_user: user
-database_password: test
+# -----------------------------
+# Repository settings
+# -----------------------------
+repo_url: "https://github.com/sacumesh/devops-task-manager.git"  # Git repository URL
+repo_branch: main                # Branch to checkout
 
-repo_url: "https://github.com/sacumesh/devops-task-manager.git"
-app_home: "/opt/{{ app_user }}"
+# -----------------------------
+# Spring Boot / server settings
+# -----------------------------
+manager_port: 8080               # Spring Boot server port
+server_address: 0.0.0.0          # Bind address for Spring Boot (0.0.0.0 = all interfaces)
+
+# -----------------------------
+# Database settings (MariaDB in Docker)
+# -----------------------------
+database_host: 127.0.0.1         # Host of MariaDB container (use host IP or published port)
+database_port: 3306              # Port mapped from Docker container
+database_name: tasks             # Database name
+database_user: user              # Database username
+database_password: test          # Database password
+
+# -----------------------------
+# Maven / build settings
+# -----------------------------
+skip_tests: true                 # Skip tests during Maven build
+maven_opts: "-B -DskipTests -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn"
+
+# -----------------------------
+# Optional: Docker / Wait settings
+# -----------------------------
+wait_for_db_timeout: 60          # Seconds to wait for MariaDB container

@@ -1,46 +1,38 @@
-- name: Create springboot user
+- name: Ensure springboot user exists
   user:
     name: "{{ app_user }}"
     shell: /bin/bash
     create_home: yes
 
-- name: Ensure log directory exists
+- name: Ensure application directories exist
   file:
-    path: "/var/log/{{ app_user }}"
+    path: "{{ item }}"
     state: directory
     owner: "{{ app_user }}"
     group: "{{ app_group }}"
     mode: '0755'
+  loop:
+    - "{{ app_home }}"
+    - "/var/log/{{ app_user }}"
 
-- name: Update apt cache
+- name: Update apt cache and install dependencies
   apt:
+    name: "{{ item }}"
+    state: present
     update_cache: yes
-
-- name: Install Java 17 JDK
-  apt:
-    name: openjdk-17-jdk
-    state: present
-
-- name: Install Maven
-  apt:
-    name: maven
-    state: present
+  loop:
+    - openjdk-17-jdk
+    - maven
+    - git
 
 - name: Determine repo name from URL
   set_fact:
     repo_name: "{{ repo_url | basename | regex_replace('\\.git$', '') }}"
 
-- name: Ensure application directory exists
-  file:
-    path: "{{ app_home }}/{{ repo_name }}"
-    state: directory
-    owner: "{{ app_user }}"
-    group: "{{ app_group }}"
-    mode: '0755'
-
 - name: Mark Git repository as safe
   command: git config --global --add safe.directory "{{ app_home }}/{{ repo_name }}"
   become: yes
+  when: repo_url is defined
 
 - name: Clone the repository
   git:
@@ -51,49 +43,60 @@
     update: yes
   become: yes
 
-- name: Build Spring Boot project
+- name: Build Spring Boot project with Maven
   command: mvn clean package -DskipTests
   args:
     chdir: "{{ app_home }}/{{ repo_name }}"
   become: yes
 
-- name: Detect the built JAR automatically
+- name: Detect built JAR automatically
   find:
     paths: "{{ app_home }}/{{ repo_name }}/target"
     patterns: "*.jar"
     recurse: no
   register: jar_files
 
-- name: Set path to built JAR
-  set_fact:
-    app_jar_path: "{{ jar_files.files[0].path }}"
+- name: Fail if no JAR found
+  fail:
+    msg: "No JAR found in {{ app_home }}/{{ repo_name }}/target"
+  when: jar_files.matched == 0
 
-- name: "Optional: create symlink to standard name app.jar"
+- name: Create symlink to standard name app.jar
   file:
-    src: "{{ app_jar_path }}"
+    src: "{{ jar_files.files[0].path }}"
     dest: "{{ app_home }}/{{ repo_name }}/target/app.jar"
     state: link
+    force: yes
 
-- name: Update app_jar_path to use symlink
+- name: Set app_jar_path fact
   set_fact:
     app_jar_path: "{{ app_home }}/{{ repo_name }}/target/app.jar"
 
-- name: Create systemd service for Task Manager
+- name: Wait for MariaDB Docker container to be ready
+  wait_for:
+    host: "{{ database_host }}"
+    port: "{{ database_port }}"
+    timeout: 60
+
+- name: Create systemd service for Spring Boot application
   copy:
-    dest: /etc/systemd/system/{{ app_name }}.service
+    dest: "/etc/systemd/system/{{ app_name }}.service"
     owner: root
     group: root
     mode: '0644'
     content: |
       [Unit]
-      Description=Task Manager Service
+      Description=Spring Boot Task Manager Service
       After=network.target
+      Wants=docker.service
 
       [Service]
       Type=simple
       User={{ app_user }}
       Group={{ app_group }}
+      WorkingDirectory={{ app_home }}/{{ repo_name }}
       Environment="SERVER_PORT={{ manager_port }}"
+      Environment="SERVER_ADDRESS=0.0.0.0"
       Environment="DATABASE_HOST={{ database_host }}"
       Environment="DATABASE_PORT={{ database_port }}"
       Environment="DATABASE_NAME={{ database_name }}"
@@ -102,15 +105,18 @@
       ExecStart=/usr/bin/java -jar {{ app_jar_path }}
       Restart=always
       RestartSec=10
+      StandardOutput=syslog
+      StandardError=syslog
+      SyslogIdentifier={{ app_name }}
 
       [Install]
       WantedBy=multi-user.target
 
-- name: Reload systemd
+- name: Reload systemd daemon
   systemd:
     daemon_reload: yes
 
-- name: Enable and start Task Manager service
+- name: Enable and start Spring Boot service
   systemd:
     name: "{{ app_name }}"
     enabled: yes
