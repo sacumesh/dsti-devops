@@ -1,0 +1,117 @@
+- name: Create springboot user
+  user:
+    name: "{{ app_user }}"
+    shell: /bin/bash
+    create_home: yes
+
+- name: Ensure log directory exists
+  file:
+    path: "/var/log/{{ app_user }}"
+    state: directory
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: '0755'
+
+- name: Update apt cache
+  apt:
+    update_cache: yes
+
+- name: Install Java 17 JDK
+  apt:
+    name: openjdk-17-jdk
+    state: present
+
+- name: Install Maven
+  apt:
+    name: maven
+    state: present
+
+- name: Determine repo name from URL
+  set_fact:
+    repo_name: "{{ repo_url | basename | regex_replace('\\.git$', '') }}"
+
+- name: Ensure application directory exists
+  file:
+    path: "{{ app_home }}/{{ repo_name }}"
+    state: directory
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: '0755'
+
+- name: Mark Git repository as safe
+  command: git config --global --add safe.directory "{{ app_home }}/{{ repo_name }}"
+  become: yes
+
+- name: Clone the repository
+  git:
+    repo: "{{ repo_url }}"
+    dest: "{{ app_home }}/{{ repo_name }}"
+    version: main
+    force: yes
+    update: yes
+  become: yes
+
+- name: Build Spring Boot project
+  command: mvn clean package -DskipTests
+  args:
+    chdir: "{{ app_home }}/{{ repo_name }}"
+  become: yes
+
+- name: Detect the built JAR automatically
+  find:
+    paths: "{{ app_home }}/{{ repo_name }}/target"
+    patterns: "*.jar"
+    recurse: no
+  register: jar_files
+
+- name: Set path to built JAR
+  set_fact:
+    app_jar_path: "{{ jar_files.files[0].path }}"
+
+- name: "Optional: create symlink to standard name app.jar"
+  file:
+    src: "{{ app_jar_path }}"
+    dest: "{{ app_home }}/{{ repo_name }}/target/app.jar"
+    state: link
+
+- name: Update app_jar_path to use symlink
+  set_fact:
+    app_jar_path: "{{ app_home }}/{{ repo_name }}/target/app.jar"
+
+- name: Create systemd service for Task Manager
+  copy:
+    dest: /etc/systemd/system/{{ app_name }}.service
+    owner: root
+    group: root
+    mode: '0644'
+    content: |
+      [Unit]
+      Description=Task Manager Service
+      After=network.target
+
+      [Service]
+      Type=simple
+      User={{ app_user }}
+      Group={{ app_group }}
+      Environment="SERVER_PORT={{ manager_port }}"
+      Environment="DATABASE_HOST={{ database_host }}"
+      Environment="DATABASE_PORT={{ database_port }}"
+      Environment="DATABASE_NAME={{ database_name }}"
+      Environment="DATABASE_USER={{ database_user }}"
+      Environment="DATABASE_PASSWORD={{ database_password }}"
+      ExecStart=/usr/bin/java -jar {{ app_jar_path }}
+      Restart=always
+      RestartSec=10
+
+      [Install]
+      WantedBy=multi-user.target
+
+- name: Reload systemd
+  systemd:
+    daemon_reload: yes
+
+- name: Enable and start Task Manager service
+  systemd:
+    name: "{{ app_name }}"
+    enabled: yes
+    state: started

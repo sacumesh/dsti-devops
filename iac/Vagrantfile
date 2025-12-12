@@ -1,17 +1,19 @@
-# Vagrantfile
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
 Vagrant.configure("2") do |config|
-  # Use Ubuntu 22.04 LTS
-  config.vm.box = "ubuntu/jammy64"
+  # Base box
+  config.vm.box = "ubuntu/jammy64"  # You can change to any box you prefer
+  config.vm.network "public_network"
 
 
-  config.vm.network "forwarded_port", guest: 8081, host: 8089
+  # VM settings
   config.vm.provider "virtualbox" do |vb|
-    vb.memory = "4096"
-    vb.cpus = 2
+    vb.memory = 10240  # 10 GB RAM
+    vb.cpus = 5        # 5 CPUs
   end
 
-  config.vm.provision "ansible_local" do |ansible|
-    ansible.playbook = "ansible/site.yml"  # your top-level playbook
-    ansible.become = true
-  end
+    config.vm.provision "ansible_local" do |ansible|
+    ansible.playbook = "ansible/site.yaml"
+    end
 end

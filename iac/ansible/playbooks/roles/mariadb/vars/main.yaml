@@ -1,0 +1,19 @@
+docker_packages:
+  - apt-transport-https
+  - ca-certificates
+  - curl
+  - gnupg
+  - lsb-release
+
+docker_repo_url: "https://download.docker.com/linux/ubuntu"
+docker_repo_arch: "amd64"
+docker_repo_channel: "stable"
+
+mariadb_image: "mariadb:10.6"
+mariadb_container_name: "mariadb"
+mariadb_root_password: "rootpass"
+mariadb_database: "tasks"
+mariadb_user: "user"
+mariadb_password: "test"
+mariadb_port: "3306"
+mariadb_volume: "mariadb_data:/var/lib/mysql"

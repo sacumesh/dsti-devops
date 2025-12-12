@@ -1,0 +1,13 @@
+app_name: task-manager
+app_user: springboot
+app_group: springboot
+manager_port: 8080
+
+database_host: localhost
+database_port: 3306
+database_name: tasks
+database_user: user
+database_password: test
+
+repo_url: "https://github.com/sacumesh/devops-task-manager.git"
+app_home: "/opt/{{ app_user }}"
