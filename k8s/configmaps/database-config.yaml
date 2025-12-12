@@ -9,3 +9,5 @@ metadata:
 data:
   db-user: "user"
   db-name: "test"
+  db-host: "mariadb"
+  db-port: "3306"

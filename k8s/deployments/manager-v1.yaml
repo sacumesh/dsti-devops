@@ -34,8 +34,16 @@ spec:
             memory: "512Mi"
             cpu: "500m"
         env:
-        - name: DATASOURCE_URL
-          value: "jdbc:mariadb://mariadb:3306"
+        - name: DATABASE_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: database-config
+              key: db-host
+        - name: DATABASE_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: database-config
+              key: db-port
         - name: DATABASE_NAME
           valueFrom:
             configMapKeyRef:

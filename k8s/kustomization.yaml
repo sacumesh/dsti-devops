@@ -11,4 +11,5 @@ resources:
   - deployments/mariadb-v1.yaml
   - pvc/mariadb-pvc.yaml
   - configmaps/database-config.yaml
+  - configmaps/manager-config.yaml
   - secrets/database-secret.yaml
