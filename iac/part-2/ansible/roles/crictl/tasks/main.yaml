@@ -1,28 +1,44 @@
 ---
-- name: Install required packages
+- name: Ensure required packages are installed
   apt:
-    name: "{{ item }}"
+    name: conntrack
     state: present
     update_cache: yes
-  with_items:
-    - conntrack
   become: true
 
 - name: Download crictl archive
   get_url:
-    url: "https://github.com/kubernetes-sigs/cri-tools/releases/download/{{ crictl_version }}/crictl-{{ crictl_version }}-linux-amd64.tar.gz"
-    dest: "/tmp/crictl-{{ crictl_version }}.tar.gz"
+    url: "{{ crictl_url }}"
+    dest: "{{ crictl_tmp }}"
     mode: '0644'
+  become: true
+  register: crictl_download
+
+- name: Fail if crictl download failed
+  fail:
+    msg: "Failed to download crictl from {{ crictl_url }}"
+  when: crictl_download is failed
+
+- name: Create /usr/local/bin if missing
+  file:
+    path: /usr/local/bin
+    state: directory
+    mode: '0755'
+    owner: root
+    group: root
+  become: true
 
 - name: Extract crictl binary to /usr/local/bin
   unarchive:
-    src: "/tmp/crictl-{{ crictl_version }}.tar.gz"
+    src: "{{ crictl_tmp }}"
     dest: /usr/local/bin
     remote_src: yes
     mode: '0755'
   become: true
+  notify: Restart cri-dockerd
 
 - name: Remove temporary crictl archive
   file:
-    path: "/tmp/crictl-{{ crictl_version }}.tar.gz"
+    path: "{{ crictl_tmp }}"
     state: absent
+  become: true
