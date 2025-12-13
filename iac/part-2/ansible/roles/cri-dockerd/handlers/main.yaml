@@ -1,0 +1,6 @@
+# roles/crictl/handlers/main.yml
+---
+- name: Restart cri-dockerd
+  systemd:
+    name: cri-docker.service
+    state: restarted
