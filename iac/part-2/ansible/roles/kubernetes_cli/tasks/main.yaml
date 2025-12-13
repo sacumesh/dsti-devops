@@ -1,5 +1,41 @@
-- name: Install kubectl
+---
+- name: Download kubectl to temporary location
   get_url:
-    url: https://dl.k8s.io/release/stable/bin/linux/amd64/kubectl
-    dest: /usr/local/bin/kubectl
+    url: "{{ kubectl_url }}"
+    dest: "{{ kubectl_tmp }}"
     mode: '0755'
+  become: true
+  register: download_result
+
+- name: Fail if kubectl download failed
+  fail:
+    msg: "Failed to download kubectl from {{ kubectl_url }}"
+  when: download_result is failed
+
+- name: Move kubectl to destination
+  become: true
+  command: "mv {{ kubectl_tmp }} {{ kubectl_dest }}"
+  args:
+    creates: "{{ kubectl_dest }}"
+  notify: Set kubectl permissions
+  register: mv_result
+
+- name: Ensure kubectl exists and is executable
+  file:
+    path: "{{ kubectl_dest }}"
+    owner: root
+    group: root
+    mode: '0755'
+    state: file
+  become: true
+
+- name: Verify kubectl installation
+  command: "{{ kubectl_dest }} version --client --short"
+  register: kubectl_version_check
+  changed_when: false
+  failed_when: kubectl_version_check.rc != 0
+  become: true
+
+- name: Show installed kubectl version
+  debug:
+    var: kubectl_version_check.stdout

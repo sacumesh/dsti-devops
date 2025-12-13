@@ -1,0 +1,5 @@
+---
+kubectl_version: "v1.24.0"
+kubectl_tmp: "/tmp/kubectl-{{ kubectl_version }}"
+kubectl_url: "https://dl.k8s.io/release/{{ kubectl_version }}/bin/linux/amd64/kubectl"
+kubectl_dest: "/usr/local/bin/kubectl"

@@ -1,0 +1,8 @@
+---
+- name: Set kubectl permissions
+  file:
+    path: /usr/local/bin/kubectl
+    owner: root
+    group: root
+    mode: '0755'
+  become: true
