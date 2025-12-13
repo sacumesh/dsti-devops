@@ -3,4 +3,8 @@
   become: true
   roles:
     - docker
+    - crictl
+    - cri-dockerd
+    - cni_plugins
     - minikube
+    - kubernetes_cli

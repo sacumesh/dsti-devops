@@ -1,14 +1,16 @@
 ---
-- name: Set CNI plugin URL
-  set_fact:
-    cni_plugin_url: "https://github.com/containernetworking/plugins/releases/download/{{ cni_plugin_version }}/{{ cni_plugin_tar }}"
-
 - name: Download CNI plugins tarball
   get_url:
     url: "{{ cni_plugin_url }}"
     dest: "{{ cni_plugin_tmp }}"
     mode: '0644'
   become: true
+  register: download_result
+
+- name: Check if the download was successful
+  fail:
+    msg: "Failed to download CNI plugins from {{ cni_plugin_url }}"
+  when: download_result is failed
 
 - name: Create CNI plugin install directory
   file:
@@ -26,6 +28,7 @@
     remote_src: yes
     mode: '0755'
   become: true
+  notify: Restart kubelet
 
 - name: Remove temporary CNI tarball
   file:

@@ -1,0 +1,6 @@
+# roles/cni_plugins/handlers/main.yml
+---
+- name: Restart kubelet
+  systemd:
+    name: kubelet
+    state: restarted
