@@ -1,15 +1,27 @@
+---
 - name: Add an apt signing key for Docker
-  apt_key:
-    url: https://download.docker.com/linux/ubuntu/gpg
+  ansible.builtin.apt_key:
+    url: "{{ docker_gpg_url }}"
     state: present
+  become: true
 
-- name: Add apt repository for stable version
-  apt_repository:
-    repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable
+- name: Add apt repository for stable Docker
+  ansible.builtin.apt_repository:
+    repo: "{{ docker_apt_repo }}"
     state: present
+    filename: docker
+  become: true
+  register: docker_repo_added
 
-- name: Install docker and its dependecies
-  apt: 
+- name: Update apt cache when repository changed
+  ansible.builtin.apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  become: true
+  when: docker_repo_added is changed
+
+- name: Install docker and its dependencies
+  ansible.builtin.apt:
     name: "{{ packages }}"
     state: present
     update_cache: yes
@@ -18,10 +30,48 @@
     - docker-ce 
     - docker-ce-cli 
     - containerd.io
-  notify:
-    - docker status
+  become: true
+  notify: docker status
 
-- name: Add vagrant user to docker group
+- name: Ensure docker group exists
+  ansible.builtin.group:
+    name: docker
+    state: present
+  become: true
+
+- name: Add user to docker group
+  ansible.builtin.user:
+    name: "{{ ansible_env.USER }}"
+    groups: docker
+    append: yes
+  become: true
+
+- name: Refresh group membership for current shell (non-interactive)
+  shell: newgrp docker
+  args:
+    executable: /bin/bash
+  ignore_errors: yes
+
+- name: Ensure docker group exists
+  group:
+    name: docker
+    state: present
+  become: true
+
+- name: Add users to docker group
   user:
-    name: vagrant
-    group: docker
+    name: "{{ item }}"
+    groups: docker
+    append: yes
+  loop:
+    - "{{ ansible_env.USER }}"
+    - vagrant
+  become: true
+
+
+- name: Ensure docker service is enabled and started
+  ansible.builtin.systemd:
+    name: docker
+    enabled: yes
+    state: started
+  become: true
