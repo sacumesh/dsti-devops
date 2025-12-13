@@ -1,136 +1,47 @@
-- name: Install conntrack
-  apt:
-    name: conntrack
-    state: present
-    update_cache: yes
-  become: true
-
-- name: Set crictl version
-  set_fact:
-    crictl_version: "v1.35.0"
-
-- name: Download crictl archive
+---
+- name: Download Minikube binary to temporary location
   get_url:
-    url: "https://github.com/kubernetes-sigs/cri-tools/releases/download/{{ crictl_version }}/crictl-{{ crictl_version }}-linux-amd64.tar.gz"
-    dest: "/tmp/crictl-{{ crictl_version }}.tar.gz"
-    mode: '0644'
-
-- name: Extract crictl binary to /usr/local/bin
-  unarchive:
-    src: "/tmp/crictl-{{ crictl_version }}.tar.gz"
-    dest: /usr/local/bin
-    remote_src: yes
+    url: "{{ minikube_url }}"
+    dest: "{{ minikube_tmp }}"
     mode: '0755'
   become: true
+  register: download_result
 
-- name: Remove temporary crictl archive
-  file:
-    path: "/tmp/crictl-{{ crictl_version }}.tar.gz"
-    state: absent
+- name: Fail if Minikube download failed
+  fail:
+    msg: "Failed to download Minikube from {{ minikube_url }}"
+  when: download_result is failed
 
-- name: Set cri-dockerd version
-  set_fact:
-    cri_dockerd_version: "0.3.21.3-0"
-    cri_dockerd_deb_url: "https://github.com/Mirantis/cri-dockerd/releases/download/v0.3.21/cri-dockerd_0.3.21.3-0.ubuntu-jammy_amd64.deb"
-    cri_dockerd_deb_path: "/tmp/cri-dockerd_0.3.21.3-0.deb"
-
-- name: Download cri-dockerd deb package
-  get_url:
-    url: "{{ cri_dockerd_deb_url }}"
-    dest: "{{ cri_dockerd_deb_path }}"
-    mode: '0644'
-  become: true
-
-- name: Install cri-dockerd
-  apt:
-    deb: "{{ cri_dockerd_deb_path }}"
-  become: true
-  register: cri_dockerd_install
-
-- name: Remove temporary cri-dockerd package
-  file:
-    path: "{{ cri_dockerd_deb_path }}"
-    state: absent
-  become: true
-  when: cri_dockerd_install is succeeded
-
-- name: Enable and start cri-dockerd service
-  systemd:
-    name: cri-docker.service
-    enabled: yes
-    state: started
-  become: true
-
-- name: Detect architecture
-  set_fact:
-    cni_plugin_arch: "amd64"
-    cni_plugin_version: "v1.9.0"
-
-
-- name: Detect architecture
-  set_fact:
-    cni_plugin_tar: "cni-plugins-linux-{{ cni_plugin_arch }}-{{ cni_plugin_version }}.tgz"
-
-
-- name: Set CNI plugin version and paths
-  set_fact:
-    cni_plugin_url: "https://github.com/containernetworking/plugins/releases/download/{{ cni_plugin_version }}/{{ cni_plugin_tar }}"
-    cni_install_dir: "/opt/cni/bin"
-    cni_plugin_tmp: "/tmp/{{ cni_plugin_tar }}"
-
-- name: Download CNI plugins tarball
-  get_url:
-    url: "{{ cni_plugin_url }}"
-    dest: "{{ cni_plugin_tmp }}"
-    mode: '0644'
-  become: true
-
-- name: Create CNI plugin install directory
-  file:
-    path: "{{ cni_install_dir }}"
-    state: directory
-    mode: '0755'
-    owner: root
-    group: root
-  become: true
-
-- name: Extract CNI plugins to install directory
-  unarchive:
-    src: "{{ cni_plugin_tmp }}"
-    dest: "{{ cni_install_dir }}"
-    remote_src: yes
-    mode: '0755'
-  become: true
-
-- name: Remove temporary CNI tarball
-  file:
-    path: "{{ cni_plugin_tmp }}"
-    state: absent
-  become: true
-
-- name: Download Minikube binary
-  get_url:
-    url: https://github.com/kubernetes/minikube/releases/latest/download/minikube-linux-amd64
-    dest: /tmp/minikube-linux-amd64
-    mode: '0755'
 
 - name: Install Minikube to /usr/local/bin
-  copy:
-    src: /tmp/minikube-linux-amd64
-    dest: /usr/local/bin/minikube
-    mode: '0755'
-    remote_src: yes
+  command: "install -m 0755 {{ minikube_tmp }} {{ minikube_dest }}"
+  args:
+    creates: "{{ minikube_dest }}"
+  become: true
+  register: install_result
+
 
 - name: Remove temporary Minikube binary
   file:
-    path: /tmp/minikube-linux-amd64
+    path: "{{ minikube_tmp }}"
     state: absent
-
-- name: Start Minikube as SSH user
   become: true
-  become_user: "{{ ansible_env.USER }}"
-  command: minikube start --driver=none
+
+# Option 1: Run synchronously in a shell that has the docker group (uses sg)
+- name: Start Minikube as vagrant in docker-group shell
+  become: true
+  become_user: vagrant
+  shell: sg docker -c 'HOME=/home/vagrant minikube start --driver=none'
   args:
-    creates: "{{ ansible_env.HOME }}/.minikube"
+    executable: /bin/bash
+  register: minikube_start
+  failed_when: minikube_start.rc != 0 and "'already running' not in minikube_start.stderr"
 
+- name: Show minikube stdout
+  debug:
+    var: minikube_start.stdout_lines
 
+- name: Show minikube stderr
+  debug:
+    var: minikube_start.stderr_lines
+    
