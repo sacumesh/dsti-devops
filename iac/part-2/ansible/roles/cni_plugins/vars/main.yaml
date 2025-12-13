@@ -1,0 +1,6 @@
+---
+cni_plugin_arch: "amd64"
+cni_plugin_version: "v1.9.0"
+cni_plugin_tar: "cni-plugins-linux-{{ cni_plugin_arch }}-{{ cni_plugin_version }}.tgz"
+cni_install_dir: "/opt/cni/bin"
+cni_plugin_tmp: "/tmp/{{ cni_plugin_tar }}"

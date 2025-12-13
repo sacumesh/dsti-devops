@@ -1,0 +1,34 @@
+---
+- name: Set CNI plugin URL
+  set_fact:
+    cni_plugin_url: "https://github.com/containernetworking/plugins/releases/download/{{ cni_plugin_version }}/{{ cni_plugin_tar }}"
+
+- name: Download CNI plugins tarball
+  get_url:
+    url: "{{ cni_plugin_url }}"
+    dest: "{{ cni_plugin_tmp }}"
+    mode: '0644'
+  become: true
+
+- name: Create CNI plugin install directory
+  file:
+    path: "{{ cni_install_dir }}"
+    state: directory
+    mode: '0755'
+    owner: root
+    group: root
+  become: true
+
+- name: Extract CNI plugins to install directory
+  unarchive:
+    src: "{{ cni_plugin_tmp }}"
+    dest: "{{ cni_install_dir }}"
+    remote_src: yes
+    mode: '0755'
+  become: true
+
+- name: Remove temporary CNI tarball
+  file:
+    path: "{{ cni_plugin_tmp }}"
+    state: absent
+  become: true

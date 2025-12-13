@@ -1,0 +1,28 @@
+---
+- name: Install required packages
+  apt:
+    name: "{{ item }}"
+    state: present
+    update_cache: yes
+  with_items:
+    - conntrack
+  become: true
+
+- name: Download crictl archive
+  get_url:
+    url: "https://github.com/kubernetes-sigs/cri-tools/releases/download/{{ crictl_version }}/crictl-{{ crictl_version }}-linux-amd64.tar.gz"
+    dest: "/tmp/crictl-{{ crictl_version }}.tar.gz"
+    mode: '0644'
+
+- name: Extract crictl binary to /usr/local/bin
+  unarchive:
+    src: "/tmp/crictl-{{ crictl_version }}.tar.gz"
+    dest: /usr/local/bin
+    remote_src: yes
+    mode: '0755'
+  become: true
+
+- name: Remove temporary crictl archive
+  file:
+    path: "/tmp/crictl-{{ crictl_version }}.tar.gz"
+    state: absent

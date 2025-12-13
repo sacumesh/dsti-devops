@@ -1,0 +1,6 @@
+- name: Bootstrap Minikube host and platform
+  hosts: all
+  become: true
+  roles:
+    - docker
+    - minikube
