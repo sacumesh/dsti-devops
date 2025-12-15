@@ -1,8 +1,10 @@
+---
 # -----------------------------
 # Install required dependencies
 # -----------------------------
 - name: Install apt dependencies
-  apt:
+  become: true
+  ansible.builtin.apt:
     name:
       - apt-transport-https
       - ca-certificates
@@ -10,24 +12,30 @@
       - gnupg
       - lsb-release
     state: present
-    update_cache: yes
+    update_cache: true
+    cache_valid_time: 3600
 
 # -----------------------------
 # Configure Docker repository
 # -----------------------------
 - name: Add Docker GPG key
-  ansible.builtin.apt_key:
+  become: true
+  ansible.builtin.get_url:
     url: https://download.docker.com/linux/ubuntu/gpg
-    state: present
+    dest: /etc/apt/keyrings/docker.asc
+    mode: '0644'
 
 - name: Add Docker APT repository
+  become: true
   ansible.builtin.apt_repository:
-    repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+    repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
     state: present
     filename: docker
+    update_cache: true
 
 - name: Install Docker Engine and CLI
-  apt:
+  become: true
+  ansible.builtin.apt:
     name:
       - docker-ce
       - docker-ce-cli
@@ -35,50 +43,55 @@
       - docker-buildx-plugin
       - docker-compose-plugin
     state: present
-    update_cache: yes
 
 # -----------------------------
 # Ensure Docker service is running
 # -----------------------------
 - name: Ensure Docker service is started and enabled
-  service:
+  become: true
+  ansible.builtin.systemd:
     name: docker
     state: started
-    enabled: yes
+    enabled: true
+    daemon_reload: true
 
 # -----------------------------
 # Docker group and user permissions
 # -----------------------------
 - name: Ensure docker group exists
-  group:
+  become: true
+  ansible.builtin.group:
     name: docker
     state: present
 
 - name: Add users to docker group
-  user:
+  become: true
+  ansible.builtin.user:
     name: "{{ item }}"
     groups: docker
-    append: yes
-  loop: "{{ docker_users | default([ansible_user, 'vagrant']) }}"
-  when: item is defined and item != ""
-  become: yes
+    append: true
+  loop: "{{ anisible_user| default([ansible_env.USER]) }}"
+  when: item | length > 0
 
 # -----------------------------
 # Pull MariaDB Docker image
 # -----------------------------
 - name: Pull MariaDB Docker image
+  become: true
   community.docker.docker_image:
     name: mariadb
-    tag: "{{ mariadb_version | default('10.6') }}"
+    tag: "{{ mariadb_version }}"
     source: pull
+    state: present
 
 # -----------------------------
 # Run MariaDB Docker container
 # -----------------------------
 - name: Run MariaDB container
+  become: true
   community.docker.docker_container:
-    name: "{{ mariadb_container_name | default('mariadb') }}"
-    image: "mariadb:{{ mariadb_version | default('10.6') }}"
+    name: "{{ mariadb_container_name }}"
+    image: "mariadb:{{ mariadb_version }}"
     state: started
     restart_policy: unless-stopped
     env:
@@ -86,14 +99,17 @@
       MARIADB_DATABASE: "{{ database_name }}"
       MARIADB_USER: "{{ database_user }}"
       MARIADB_PASSWORD: "{{ database_password }}"
-    published_ports:
-      - "3306:{{ database_port | default(3306) }}"
+    ports:
+      - "{{ database_port }}:3306"
+    volumes:
+      - "{{ mariadb_data_dir }}:/var/lib/mysql"
 
 # -----------------------------
 # Wait for MariaDB to be ready
 # -----------------------------
 - name: Wait for MariaDB container to be ready
-  wait_for:
-    host: "{{ mariadb_host | default('127.0.0.1') }}"
-    port: "{{ mariadb_port | default(3306) }}"
-    timeout: "{{ wait_for_db_timeout | default(60) }}"
+  ansible.builtin.wait_for:
+    host: "{{ database_host }}"
+    port: "{{ database_port }}"
+    timeout: 60
+    delay: 5

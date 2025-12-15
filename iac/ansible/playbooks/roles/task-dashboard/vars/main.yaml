@@ -2,9 +2,9 @@
 # Application identity
 # -----------------------------
 app_name: task-dashboard        # systemd service name
-app_user: pythonapp                    # Linux user to run the app
-app_group: pythonapp                   # Linux group
-app_home: /opt/python_frontend         # Base directory for application
+app_user: task-dashboard                    # Linux user to run the app
+app_group: task-dashboard                   # Linux group
+app_home: /opt/task-dashboard         # Base directory for application
 repo_url: "https://github.com/sacumesh/devops-task-dashboard.git"
 repo_branch: main                 # Port for the Python web server
 

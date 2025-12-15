@@ -1,0 +1,142 @@
+
+# -----------------------------
+# Install system dependencies as root
+# -----------------------------
+- name: Update apt cache and install dependencies (root)
+  become: true
+  apt:
+    name: "{{ item }}"
+    state: present
+    update_cache: yes
+  loop:
+    - git
+    - wget
+    - bzip2
+    - git
+    - build-essential
+    - curl
+
+# -----------------------------
+# Install Miniconda as root
+# -----------------------------
+- name: Download Miniconda installer (root)
+  become: true
+  get_url:
+    url: https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+    dest: /tmp/miniconda.sh
+    mode: '0755'
+
+- name: Install Miniconda (root)
+  become: true
+  command: bash /tmp/miniconda.sh -b -p "{{ conda_path }}"
+  args:
+    creates: "{{ conda_path }}/bin/conda"
+
+
+# -----------------------------
+# Clone repository as root
+# -----------------------------
+- name: Determine repo name from URL
+  set_fact:
+    repo_name: "{{ repo_url | basename | regex_replace('\\.git$', '') }}"
+
+- name: Clone the repository (root)
+  become: true
+  git:
+    repo: "{{ repo_url }}"
+    dest: "{{ ansible_env.HOME }}/{{ repo_name }}"
+    version: main
+    force: yes
+    update: yes
+
+# -----------------------------
+# Accept Conda ToS and create environment as root
+# -----------------------------
+- name: Accept Conda ToS for main channel (root)
+  become: true
+  command: "{{ conda_path }}/bin/conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main"
+
+- name: Accept Conda ToS for R channel (root)
+  become: true
+  command: "{{ conda_path }}/bin/conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r"
+
+- name: Create Conda environment for the app
+  become: true
+  command: "{{ conda_path }}/bin/conda create -y -n {{ repo_name }} python={{ python_version }}"
+  register: conda_create
+  changed_when: "'already exists' not in conda_create.stdout"
+  failed_when: conda_create.rc != 0 and "'already exists' not in conda_create.stdout"
+  when: repo_name not in lookup('pipe', conda_path + '/bin/conda env list')
+
+- name: Install Python dependencies in Conda environment
+  become: true
+  command: "{{ conda_path }}/bin/conda run -n {{ repo_name }} pip install -r {{ ansible_env.HOME }}/{{ repo_name }}/requirements.txt"
+
+
+- name: Ensure destination directory exists
+  become: true
+  file:
+    path: "{{ app_home }}/"
+    state: directory
+    mode: '0755'
+
+- name: Copy application source code
+  become: true
+  copy:
+    src: "{{ ansible_env.HOME }}/{{ repo_name }}/src/"
+    dest: "{{ app_home }}/"
+    mode: '0755'
+  notify: "Restart Task Dashboard"
+
+- name: Create systemd service for Python frontend
+  become: true
+  copy:
+    dest: "/etc/systemd/system/{{ app_name }}.service"
+    content: |
+      [Unit]
+      Description=Python Frontend Dashboard Service
+      After=network.target docker.service
+      Wants=docker.service
+
+      [Service]
+      Type=simple
+      WorkingDirectory={{ app_home }}
+      Environment="SERVER_PORT={{ task_dashboard_port }}"
+      Environment="MANAGER_PORT={{ task_manager_port }}"
+      Environment="MANAGER_HOST={{ task_manager_host }}"
+      Environment="DATABASE_PASSWORD={{ database_password }}"
+      ExecStart={{ conda_path }}/bin/conda run -n {{ repo_name }} python {{ app_home }}/main.py
+      Restart=always
+      RestartSec=10
+      StandardOutput=journal
+      StandardError=journal
+      [Install]
+      WantedBy=multi-user.target
+  register: service_file
+
+
+# Reload systemd only if the service file changed
+- name: Reload systemd daemon
+  become: true
+  systemd:
+    daemon_reload: true
+  when: service_file.changed
+
+# Enable and start service only if the service file changed
+- name: Enable and start Task Manager service
+  become: true
+  systemd:
+    name: task-manager
+    state: started
+    enabled: true
+
+# 5. Wait for application to be healthy
+- name: Wait for application to be healthy
+  uri:
+    url: "http://127.0.0.1:5000/health"
+    status_code: 200
+    timeout: 30
+  register: result
+  retries: 10
+  delay: 5
+  until: result.status == 200

@@ -4,4 +4,5 @@
 mariadb_container_name: mariadb
 mariadb_version: "10.6"
 mariadb_root_password: root
-wait_for_db_timeout: 60          # Seconds to wait for MariaDB to become ready
+wait_for_db_timeout: 60    
+mariadb_data_dir: /var/lib/mariadb 

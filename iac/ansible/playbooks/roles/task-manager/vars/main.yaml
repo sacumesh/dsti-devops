@@ -2,9 +2,7 @@
 # Application & system settings
 # -----------------------------
 app_name: task-manager          # Name of the systemd service
-app_user: springboot            # Linux user to run the app
-app_group: springboot           # Linux group for the app
-app_home: /opt/springboot       # Base directory for the application
+app_home: /opt/task-manager     # Base directory for the application
 
 # -----------------------------
 # Repository settings
