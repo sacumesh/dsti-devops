@@ -95,16 +95,12 @@
     content: |
       [Unit]
       Description=Python Frontend Dashboard Service
-      After=network.target docker.service
-      Wants=docker.service
-
       [Service]
       Type=simple
       WorkingDirectory={{ app_home }}
       Environment="SERVER_PORT={{ task_dashboard_port }}"
       Environment="MANAGER_PORT={{ task_manager_port }}"
       Environment="MANAGER_HOST={{ task_manager_host }}"
-      Environment="DATABASE_PASSWORD={{ database_password }}"
       ExecStart={{ conda_path }}/bin/conda run -n {{ repo_name }} python {{ app_home }}/main.py
       Restart=always
       RestartSec=10
@@ -126,7 +122,7 @@
 - name: Enable and start Task Manager service
   become: true
   systemd:
-    name: task-manager
+    name: task-dashboard
     state: started
     enabled: true
 
