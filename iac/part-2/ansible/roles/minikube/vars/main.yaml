@@ -1,5 +1,0 @@
----
-minikube_version: "v1.30.0"
-minikube_tmp: "/tmp/minikube-{{ minikube_version }}"
-minikube_url: "https://storage.googleapis.com/minikube/releases/{{ minikube_version }}/minikube-linux-amd64"
-minikube_dest: "/usr/local/bin/minikube"

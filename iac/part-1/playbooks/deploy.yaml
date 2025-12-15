@@ -1,6 +1,5 @@
 - hosts: all
   connection: local
-  become: yes
   roles:
     - mariadb
     - task-manager

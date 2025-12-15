@@ -1,5 +1,0 @@
----
-crictl_version: "v1.35.0"   
-crictl_tar: "crictl-{{ crictl_version }}-linux-amd64.tar.gz"
-crictl_url: "https://github.com/kubernetes-sigs/cri-tools/releases/download/{{ crictl_version }}/{{ crictl_tar }}"
-crictl_tmp: "/tmp/{{ crictl_tar }}"
