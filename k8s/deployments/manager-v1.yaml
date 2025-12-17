@@ -21,7 +21,7 @@ spec:
       serviceAccountName: manager-sa
       containers:
       - name: manager
-        image: sacumesh/task-manager:1.0.0
+        image: sacumesh/devops-task-manager:1.0.0
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8080
