@@ -10,8 +10,6 @@ metadata:
 spec:
   hosts:
     - manager.default.svc.cluster.local
-  gateways:
-    - mesh-gateway
   http:
     - name: "manager-v1-v2-split"
       route:

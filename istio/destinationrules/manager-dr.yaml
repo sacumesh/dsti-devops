@@ -8,7 +8,7 @@ metadata:
     app: manager
     managed-by: istio
 spec:
-  host: manager.default.svc.cluster.local
+  host: manager
   subsets:
     - name: v1
       labels:
