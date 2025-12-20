@@ -3,6 +3,20 @@
 ## Overview
 DevOps project delivering a Task Manager web app with CRUD, MariaDB storage, automated tests, CI, local VM provisioning (Vagrant + Ansible), Docker images, and Kubernetes manifests for Minikube. No public cloud deployment is required.
 
+## References
+- dsti-task-manager
+    - Repository: https://github.com/sacumesh/devops-task-manager
+    - Docker images:
+        - sacumesh/devops-task-manager:1.0.0 (https://hub.docker.com/layers/sacumesh/devops-task-manager/1.0.0/)
+        - sacumesh/devops-task-manager:2.0.0 (https://hub.docker.com/layers/sacumesh/devops-task-manager/2.0.0/)
+- dsti-task-dashboard
+    - Repository: https://github.com/sacumesh/devops-task-dashboard
+    - Docker images:
+        - sacumesh/devops-task-dashboard:1.0.0 (https://hub.docker.com/layers/sacumesh/devops-task-dashboard/1.0.0/)
+
+- docker-hub account: https://hub.docker.com/u/sacumesh
+---
+
 ## Repository Setup
 Clone with submodules:
 ```bash
@@ -22,121 +36,29 @@ List submodules:
 git submodule status
 ```
 
-## Part I — Task Management Web Application
+## Part I (Web Application) and Part II (CI/CD)
 
-Simple Task Management app with a backend REST API, a frontend dashboard, and a relational database. Includes health checks and automated tests.
+Simple Task Management app with a backend REST API, a frontend dashboard, and a MariaDB database. Includes health checks and automated tests. CI/CD is implemented with GitHub Actions (see section below).
 
 ### Architecture
-- Backend: Task Manager API (Spring Boot / Java)
-- Frontend: Task Dashboard (Flask / Python)
-- Database: MariaDB (Docker container)
-
----
-
+- Backend: Task Manager API (Spring Boot/Java), Database: MariaDB (Docker)
+- Frontend: Task Dashboard (Flask/Python)
 ### Backend — Task Manager API
-
-![Backend — Task Manager API](./images/part1/image2.png)
-
-#### Technology
-- Language: Java
-- Framework: Spring Boot
-- Database: MariaDB (production), H2 (tests)
-- Build tool: Maven
-
-#### Features
-- REST API with CRUD operations on tasks
-- OpenAPI/Swagger documentation
-- Automated unit tests
-
-#### API Endpoints
-| Method | Endpoint           | Description   |
-|-------:|--------------------|---------------|
-| POST   | `/api/tasks`       | Create a task |
-| GET    | `/api/tasks`       | List tasks    |
-| GET    | `/api/tasks/{id}`  | Get by ID     |
-| PUT    | `/api/tasks/{id}`  | Update task   |
-| DELETE | `/api/tasks/{id}`  | Delete task   |
-| GET    | `/actuator/health` | Health check  |
-| GET    | /swagger-ui/index.html#/ | API documentation |
-
-#### Testing
-- Type: Unit tests
-- DB (tests): H2 (in-memory)
-- Framework: JUnit + Spring Boot Test
-- Coverage: service, API, and repository layers
-
-#### Run Tests (Backend)
-```bash
-# Unix/macOS
-./mvnw test
-
-# Windows (PowerShell/CMD)
-mvnw.cmd test
-```
-
----
+Documentation: https://github.com/sacumesh/devops-task-manager
 
 ### Frontend — Task Dashboard
+Documentation: https://github.com/sacumesh/devops-task-dashboard
 
-![Frontend — Task Dashboard](./images/part1/image2.png)
-
-#### Technology
-- Language: Python
-- Framework: Flask
-
-#### Features
-- Web dashboard for managing tasks
-- Communicates with the backend REST API
-- Displays task title, status, and description
-
-#### Endpoints
-| Method | Endpoint  | Description           |
-|-------:|-----------|-----------------------|
-| GET    | `/`       | Task dashboard UI     |
-| GET    | `/health` | Frontend health check |
-
-## Part II — CI/CD Pipelines
-
-GitHub Actions for both repositories: `task-manager` (backend) and `task-dashboard` (frontend).
-
-### task-manager
-- repository: https://github.com/sacumesh/devops-task-manager
-- Branches: `develop`, `main`
-- Triggers:
-    - Push or pull request:
-        - Run unit tests (Maven)
-        - Build Docker image (no push)
-    - Manual (`workflow_dispatch`):
-        - Input: tag (e.g., `v1.2.0`)
-        - Login with GitHub Secrets
-        - Build and push to Docker Hub
-
-### task-dashboard
-- Repository: https://github.com/sacumesh/devops-task-dashboard
-- Branches: `develop`, `main`
-- Triggers:
-    - Push or pull request:
-        - Build Docker image (no tests)
-    - Manual (`workflow_dispatch`):
-        - Input: tag (e.g., `v1.2.0`)
-        - Login with GitHub Secrets
-        - Build and push to Docker Hub
-
-### Notes
-- Push/PR builds validate Dockerfiles and build contexts
-- Manual publishing gates releases
-
-### Workflow References
-- Task Manager:
-    https://github.com/sacumesh/devops-task-manager/tree/main/.github/workflows
-- Task Dashboard:
-    https://github.com/sacumesh/devops-task-dashboard/tree/main/.github/workflows
-
-### Docker Hub Images
-- Backend: https://hub.docker.com/layers/sacumesh/devops-task-manager/1.0.0
-- Frontend: https://hub.docker.com/layers/sacumesh/devops-task-dashboard/1.0.0
 
 ## Part III — Infrastructure as Code (IaC)
+
+### Prerequisites
+- VM provider: VirtualBox 7.x (recommended) or Hyper-V
+    - VirtualBox downloads: https://www.virtualbox.org/wiki/Downloads
+- Vagrant:
+    - Download: https://developer.hashicorp.com/vagrant/downloads
+
+Note: Ansible runs in local mode inside the VM; no Ansible install needed on the host.
 
 ### Deployed Components
 - Java Spring Boot application (Task Manager API — backend)
@@ -161,7 +83,7 @@ vagrant up
 
 ### Access the Applications
 - The applicatons can be accssed from the host without ssh to the vm with the below.
-    - Backend: http://localhost:8080/swagger-ui/index.html#/
+    - Backend: http://localhost:8080/swagger-ui/index.html
     - Frontend: http://localhost:5000
 
 ### Cleanup
@@ -174,6 +96,9 @@ vagrant destroy -f
 ```
 
 ## Part IV — Docker Compose
+
+### Prerequisites
+- Docker Desktop or Docker Engine with Docker Compose
 
 Start the full stack with Docker Compose.
 
@@ -214,33 +139,42 @@ docker build --no-cache -t sacumesh/devops-task-dashboard:local .
 
 - Access (default):
     - Dashboard: http://localhost:5000
+        ![Compose up output](./images/part4/image1.png)
     - Manager API: http://localhost:8080/swagger-ui/index.html#/
-    - MariaDB: localhost:3306
+    Sample output:
+    ![Services running](./images/part4/image2.png)
+        If you see this message when opening the dashboard:
+    ![Backend not ready](./images/part4/image3.png)
 
-Sample output:
-![Compose up output](./images/part4/image1.png)
-![Services running](./images/part4/image2.png)
+        Important: wait a few minutes for the backend and database to finish starting. The dashboard will work automatically once the API is healthy.
+
+        Optional checks:
+        - docker compose ps
+        - docker compose logs -f manager mariadb
+        - curl -sf http://localhost:8080/actuator/health
 
 - Custom (inline env):
-    ```bash
-    DB_PASSWORD=myrootpass \
-    DATABASE_NAME=mytasks \
-    DATABASE_USER=myuser \
-    DATABASE_PASSWORD=mypass \
-    MANAGER_PORT=9090 \
-    DASHBOARD_PORT=6000 \
-    docker compose up -d
-    ```
+    - Custom (inline env):
+        ```bash
+        DATABASE_NAME=mytasks \
+        DATABASE_USER=myuser \
+        DATABASE_PASSWORD=mypass \
+        DATABASE_PORT=3306 \
+        MANAGER_PORT=9090 \
+        DASHBOARD_PORT=6000 \
+        docker compose up -d
+        ```
 
-- Custom (`.env` file):
-    Create `.env.custom`:
-    ```bash
-    DB_PASSWORD=myrootpass
-    DATABASE_NAME=mytasks
-    DATABASE_USER=myuser
-    DATABASE_PASSWORD=mypass
-    MANAGER_PORT=9090
-    DASHBOARD_PORT=6000
+    - Custom (.env file):
+        Create `.env.custom`:
+        ```env
+        DATABASE_NAME=mytasks
+        DATABASE_USER=myuser
+        DATABASE_PASSWORD=mypass
+        DATABASE_PORT=3306
+        MANAGER_PORT=9090
+        DASHBOARD_PORT=6000
+        ```
     ```
     Start:
     ```bash
@@ -310,6 +244,7 @@ Sample output:
 Apply manifests:
 ```bash
 kubectl apply -k k8s/
+# The resources are deployed in the default namespace for simplicty
 ```
 Sample output:
 ![command output](./images/part5/image4.png)
@@ -345,7 +280,12 @@ Sample output:
 ### 6) Access Services (minikube service --url)
 ```bash
 minikube service <service-name> --url
+
+# Use the Kubernetes Service name after the colon:
+# task-dashboard: dashboard  -> run: minikube service dashboard --url
+# task-manager: manager      -> run: minikube service manager --url
 ```
+
 Sample outputs:
 ![command output](./images/part5/image8.png)
 ![command output](./images/part5/image9.png)
@@ -358,8 +298,9 @@ Sample outputs:
 ```bash
 minikube service -n istio-system prometheus --url
 ```
-Sample output:
+Sample output :
 ![command output](./images/part5/image17.png)
+jdbc metrics scrapped from the task-mananger spring boot application
 ![command output](./images/part5/image16.png)
 
 #### Kiali
@@ -369,7 +310,7 @@ minikube service -n istio-system kiali --url
 
 Get Task Dashboard URL(In new terminal):
 ```bash
-minikube service task-dashboard --url
+minikube service dashboard --url
 ```
 
 Generate traffic (In new Terminal):
