@@ -2,16 +2,14 @@
 apiVersion: networking.istio.io/v1beta1
 kind: VirtualService
 metadata:
-  name: manager
+  name: manager-traffic-dist
   namespace: default
   labels:
     app: manager
     managed-by: istio
 spec:
   hosts:
-    - manager.default.svc.cluster.local
-  gateways:
-    - mesh-gateway
+    - manager
   http:
     - name: "manager-v1-v2-split"
       route:

@@ -1,0 +1,15 @@
+---
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: dashboard
+  namespace: default
+  labels:
+    app: dashboard
+    managed-by: istio
+spec:
+  host: dashboard
+  subsets:
+    - name: v1
+      labels:
+        version: v1
