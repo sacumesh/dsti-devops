@@ -1,0 +1,20 @@
+# -----------------------------
+# Application identity
+# -----------------------------
+app_name: task-dashboard        # systemd service name
+app_user: task-dashboard                    # Linux user to run the app
+app_group: task-dashboard                   # Linux group
+app_home: /opt/task-dashboard         # Base directory for application
+repo_url: "https://github.com/sacumesh/devops-task-dashboard.git"
+repo_branch: main                 # Port for the Python web server
+
+# -----------------------------
+# Python / virtual environment
+# -----------------------------
+conda_path: /home/pythonapp/miniconda3
+python_version: "3.11"
+
+# -----------------------------
+# Optional: wait time for DB
+# -----------------------------
+wait_for_db_timeout: 60    # Seconds to wait for the database container to be ready

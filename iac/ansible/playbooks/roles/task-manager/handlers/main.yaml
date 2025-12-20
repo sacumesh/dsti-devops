@@ -1,0 +1,6 @@
+- name: Restart Task Manager service
+  systemd:
+    name: task-manager
+    state: restarted
+  become: true
+  listen: "Restart Task Manager"

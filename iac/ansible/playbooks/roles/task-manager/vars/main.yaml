@@ -1,0 +1,27 @@
+# -----------------------------
+# Application & system settings
+# -----------------------------
+app_name: task-manager          # Name of the systemd service
+app_home: /opt/task-manager     # Base directory for the application
+
+# -----------------------------
+# Repository settings
+# -----------------------------
+repo_url: "https://github.com/sacumesh/devops-task-manager.git"  # Git repository URL
+repo_branch: main                # Branch to checkout
+
+# -----------------------------
+# Spring Boot / server settings
+# -----------------------------
+server_address: 0.0.0.0          # Bind address for Spring Boot (0.0.0.0 = all interfaces)
+
+# -----------------------------
+# Maven / build settings
+# -----------------------------
+skip_tests: true                 # Skip tests during Maven build
+maven_opts: "-B -DskipTests -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn"
+
+# -----------------------------
+# Optional: Docker / Wait settings
+# -----------------------------
+wait_for_db_timeout: 60          # Seconds to wait for MariaDB container

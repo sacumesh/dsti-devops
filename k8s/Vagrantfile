@@ -13,7 +13,9 @@ Vagrant.configure("2") do |config|
     vb.cpus = 5        # 5 CPUs
   end
 
-    config.vm.provision "ansible_local" do |ansible|
-    ansible.playbook = "ansible/site.yaml"
-    end
+#   # Network settings
+#   config.vm.network "public"  # Replace with your network interface name
+
+  # Optional: synced folder
+  # config.vm.synced_folder "./data", "/vagrant_data"
 end

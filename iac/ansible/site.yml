@@ -1,3 +1,0 @@
-# site.yml
-- import_playbook: k8s.yml
-- import_playbook: nginx.yml

@@ -1,4 +1,0 @@
----
-istio_version: "1.28.1"
-istio_download_script: "/tmp/downloadIstio.sh"
-istio_base_dir: "/tmp"
