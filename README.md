@@ -35,7 +35,7 @@ Simple Task Management app with a backend REST API, a frontend dashboard, and a 
 
 ### Backend — Task Manager API
 
-![Backend — Task Manager API](./assets/backend.png)
+![Backend — Task Manager API](./images/part1/image2.png)
 
 #### Technology
 - Language: Java
@@ -57,6 +57,7 @@ Simple Task Management app with a backend REST API, a frontend dashboard, and a 
 | PUT    | `/api/tasks/{id}`  | Update task   |
 | DELETE | `/api/tasks/{id}`  | Delete task   |
 | GET    | `/actuator/health` | Health check  |
+| GET    | /swagger-ui/index.html#/ | API documentation |
 
 #### Testing
 - Type: Unit tests
@@ -77,7 +78,7 @@ mvnw.cmd test
 
 ### Frontend — Task Dashboard
 
-![Frontend — Task Dashboard](./assets/frontend.png)
+![Frontend — Task Dashboard](./images/part1/image2.png)
 
 #### Technology
 - Language: Python
@@ -157,8 +158,9 @@ vagrant up
 ```
 
 ### Access the Applications
-- Backend: http://localhost:8080
-- Frontend: http://localhost:5000
+- The applicatons can be accssed from the host without ssh to the vm with the below.
+    - Backend: http://localhost:8080/swagger-ui/index.html#/
+    - Frontend: http://localhost:5000
 
 ### Cleanup
 ```bash
