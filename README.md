@@ -214,12 +214,19 @@ docker build --no-cache -t sacumesh/devops-task-dashboard:local .
 
 - Access (default):
     - Dashboard: http://localhost:5000
+        ![Compose up output](./images/part4/image1.png)
     - Manager API: http://localhost:8080/swagger-ui/index.html#/
-    - MariaDB: localhost:3306
+    Sample output:
+    ![Services running](./images/part4/image2.png)
+        If you see this message when opening the dashboard:
+    ![Backend not ready](./images/part4/image3.png)
 
-Sample output:
-![Compose up output](./images/part4/image1.png)
-![Services running](./images/part4/image2.png)
+        Important: wait a few minutes for the backend and database to finish starting. The dashboard will work automatically once the API is healthy.
+
+        Optional checks:
+        - docker compose ps
+        - docker compose logs -f manager mariadb
+        - curl -sf http://localhost:8080/actuator/health
 
 - Custom (inline env):
     ```bash
