@@ -100,6 +100,7 @@ mvnw.cmd test
 GitHub Actions for both repositories: `task-manager` (backend) and `task-dashboard` (frontend).
 
 ### task-manager
+- repository: https://github.com/sacumesh/devops-task-manager
 - Branches: `develop`, `main`
 - Triggers:
     - Push or pull request:
@@ -111,6 +112,7 @@ GitHub Actions for both repositories: `task-manager` (backend) and `task-dashboa
         - Build and push to Docker Hub
 
 ### task-dashboard
+- Repository: https://github.com/sacumesh/devops-task-dashboard
 - Branches: `develop`, `main`
 - Triggers:
     - Push or pull request:
@@ -189,6 +191,19 @@ Start the full stack with Docker Compose.
 
 Ensure ports are free before starting.
 
+### Build (Optional)
+By default, Docker Compose pulls published images. Build locally only if you change code and plan to use custom images, then update docker-compose.yml to use your local tags.
+
+```bash
+# Build backend (Task Manager)
+cd task-manager
+docker build --no-cache -t sacumesh/devops-task-manager:local .
+
+# Build frontend (Task Dashboard)
+cd ../task-dashboard
+docker build --no-cache -t sacumesh/devops-task-dashboard:local .
+```
+
 ### Run
 - Default:
     ```bash
@@ -199,7 +214,7 @@ Ensure ports are free before starting.
 
 - Access (default):
     - Dashboard: http://localhost:5000
-    - Manager API: http://localhost:8080
+    - Manager API: http://localhost:8080/swagger-ui/index.html#/
     - MariaDB: localhost:3306
 
 Sample output:
@@ -259,11 +274,6 @@ Deploy Task Dashboard (frontend) and Task Manager (backend) locally on Kubernete
 - task-manager exposes metrics at `/actuator/prometheus`
 - Prometheus (Istio demo profile in `istio-system`) scrapes application metrics
 - Envoy sidecars emit telemetry for Prometheus and Kiali
-
-### Data Persistence
-- mariadb runs as a Deployment/Service
-- task-manager connects to mariadb for CRUD
-- DB traffic remains within the namespace
 
 ### 1) Prerequisites
 - Windows users: use WSL2
@@ -357,12 +367,12 @@ Sample output:
 minikube service -n istio-system kiali --url
 ```
 
-Get Task Dashboard URL:
+Get Task Dashboard URL(In new terminal):
 ```bash
 minikube service task-dashboard --url
 ```
 
-Generate traffic:
+Generate traffic (In new Terminal):
 ```bash
 DASHBOARD_URL="<paste the URL>"
 while true; do
