@@ -1,20 +1,29 @@
 # dsti-devops
 
-## Summary
+## Overview
 DevOps project delivering a Task Manager web app with CRUD, MariaDB storage, automated tests, CI, local VM provisioning (Vagrant + Ansible), Docker images, and Kubernetes manifests for Minikube. No public cloud deployment is required.
 
 ## Repository Setup
+Use this repository’s remote URL as the main repository URL.
 
-Clone the main repository with submodules:
+Clone with submodules:
 ```bash
-git clone --recurse-submodules <main-repository-url>
+git clone --recurse-submodules <this-repository-URL>
+# To get the URL: git remote get-url origin
 ```
+
 If already cloned:
 ```bash
 git submodule update --init --recursive
 ```
 
-## Part 1 — Web Application
+## Apps as submodules
+The app components are **Git submodules**. List them:
+```bash
+git submodule status
+```
+
+## Part I — Task Management Web Application
 
 Simple Task Management app with a backend REST API, a frontend dashboard, and a relational database. Includes health checks and automated tests.
 
@@ -23,7 +32,11 @@ Simple Task Management app with a backend REST API, a frontend dashboard, and a 
 - Frontend: Task Dashboard (Flask / Python)
 - Database: MariaDB (Docker container)
 
+---
+
 ### Backend — Task Manager API
+
+![Backend — Task Manager API](./assets/backend.png)
 
 #### Technology Stack
 - Language: Java
@@ -53,12 +66,19 @@ Simple Task Management app with a backend REST API, a frontend dashboard, and a 
 - Coverage: service, API, and repository layers
 
 #### Running Tests (Backend)
-From the `task-manager` backend root:
 ```bash
+# Unix/macOS
 ./mvnw test
+
+# Windows (PowerShell/CMD)
+mvnw.cmd test
 ```
 
+---
+
 ### Frontend — Task Dashboard
+
+![Frontend — Task Dashboard](./assets/frontend.png)
 
 #### Technology Stack
 - Language: Python
@@ -75,107 +95,117 @@ From the `task-manager` backend root:
 | GET    | `/`       | Task dashboard UI     |
 | GET    | `/health` | Frontend health check |
 
-## Running the Web Application (Local)
 
-- Backend (Java 17+, Maven):
-    ```bash
-    ./mvnw spring-boot:run
-    ```
-    Starts on port 8080 by default.
 
-- Frontend (Python 3.10+, pip):
-    ```bash
-    export MANAGER_HOST=localhost
-    export MANAGER_PORT=8080
-    pip install -r requirements.txt
-    flask run --port 5000
-    ```
-    Starts on port 5000 by default.
+## Part II - CI/CD Pipelines
 
-For a full stack, see Part 4 — Docker Compose.
+GitHub Actions for both repositories: `task-manager` (backend) and `task-dashboard` (frontend).
 
-## Part 2 — CI/CD
+### task-manager
+- Branches: `develop`, `main`
+- Triggers:
+    - Push or pull request:
+        - Run unit tests (Maven)
+        - Build Docker image (no push)
+    - Manual (`workflow_dispatch`):
+        - Input: tag (e.g., `v1.2.0`)
+        - Login with GitHub Secrets
+        - Build and push to Docker Hub
 
-GitHub Actions pipelines for both repositories: `task-manager` (backend) and `task-dashboard` (frontend).
+### task-dashboard
+- Branches: `develop`, `main`
+- Triggers:
+    - Push or pull request:
+        - Build Docker image (no tests)
+    - Manual (`workflow_dispatch`):
+        - Input: tag (e.g., `v1.2.0`)
+        - Login with GitHub Secrets
+        - Build and push to Docker Hub
 
-### Task Manager (task-manager)
-- Branches: develop, main
-- On push/pull request:
-    - Run unit tests (Maven)
-    - Build Docker image (no push)
-- On manual trigger (`workflow_dispatch`):
-    - Input: tag (e.g., `v1.2.0`)
-    - Login with GitHub Secrets
-    - Build and push to Docker Hub
+### Notes
+- Push/PR builds validate the Dockerfile and build context
+- Manual publishing gates releases
 
-### Task Dashboard (task-dashboard)
-- Branches: develop, main
-- On push/pull request:
-    - Docker build only (no tests)
-- On manual trigger (`workflow_dispatch`):
-    - Input: tag (e.g., `v1.2.0`)
-    - Login with GitHub Secrets
-    - Build and push to Docker Hub
-- Notes:
-    - Build on push/PR validates Dockerfile and context
-    - Manual publishing gates releases
-
-### Workflow References
+### Workflow references
 - Task Manager:
-    https://github.com/<your-org-or-username>/task-manager/tree/main/.github/workflows
+    https://github.com/sacumesh/devops-task-manager/tree/main/.github/workflows
 - Task Dashboard:
-    https://github.com/<your-org-or-username>/task-dashboard/tree/main/.github/workflows
+    https://github.com/sacumesh/devops-task-dashboard/tree/main/.github/workflows
 
 ### Docker Hub Images
-- Backend: `docker.io/<your-org-or-username>/task-manager:<tag>`
-- Frontend: `docker.io/<your-org-or-username>/task-dashboard:<tag>`
+- Backend: https://hub.docker.com/layers/sacumesh/devops-task-manager/1.0.0
+- Frontend: https://hub.docker.com/layers/sacumesh/devops-task-dashboard/1.0.0
 
-## Part 3 — Infrastructure as Code (IaC)
+## Part III — Infrastructure as Code (IaC)
 
-Vagrant provisions a VM; Ansible (local mode) configures runtimes and deploys applications.
+### Deployed components
+- Java Spring Boot application (Task Manager API — backend)
+- Python Flask application (Task Dashboard — frontend)
+- MariaDB database running in Docker
 
-### VM Configuration
+Vagrant provisions the VM; Ansible (local mode) configures runtimes and deploys the applications.
+
+### VM configuration
 - Provisioning: Vagrant + Ansible (local)
 - Port forwarding:
-    | VM Port | Host Port | Application                  |
-    |--------:|-----------|------------------------------|
-    |    8080 | 8080      | Task Manager API (Backend)   |
-    |    5000 | 5000      | Task Dashboard (Frontend)    |
+    | Host Port | VM Port | Service                      |
+    |----------:|--------:|------------------------------|
+    | 8080      | 8080    | Task Manager API (backend)   |
+    | 5000      | 5000    | Task Dashboard (frontend)    |
 
-### Running the VM
-From the directory with `Vagrantfile` and playbooks:
+### Run the VM
+From the `iac` directory containing the `Vagrantfile` and playbooks:
 ```bash
 vagrant up
 ```
 
-### Accessing the Applications
+### Access the applications
 - Backend: http://localhost:8080
 - Frontend: http://localhost:5000
 
-## Part 4 — Docker Compose
+### Cleanup
+```bash
+# Stop the VM
+vagrant halt
 
-Docker Compose starts the full stack.
+# Destroy the VM and remove resources
+vagrant destroy -f
+```
+## Part IV — Docker Compose
+
+Start the full stack with Docker Compose.
 
 ### Services
 - MariaDB (Database)
 - Task Manager (Backend API)
 - Task Dashboard (Frontend UI)
 
-### Default Services, Ports, and Environment Variables
-| Service        | Description  | Host      | Default Port | Environment Variables                                                                                   | Example Value                                 |
-|----------------|--------------|-----------|--------------|----------------------------------------------------------------------------------------------------------|-----------------------------------------------|
-| MariaDB        | Database     | localhost | 3306         | `DB_PASSWORD`, `DATABASE_NAME`, `DATABASE_USER`, `DATABASE_PASSWORD`                                    | `rootpass`, `tasks`, `user`, `test`           |
+### Default services, ports, and environment variables
+| Service        | Description  | Host      | Default Port | Environment Variables                                                                                   | Example Value                                  |
+|----------------|--------------|-----------|--------------|----------------------------------------------------------------------------------------------------------|------------------------------------------------|
+| MariaDB        | Database     | localhost | 3306         | `DB_PASSWORD`, `DATABASE_NAME`, `DATABASE_USER`, `DATABASE_PASSWORD`                                    | `rootpass`, `tasks`, `user`, `test`            |
 | Task Manager   | Backend API  | localhost | 8080         | `MANAGER_PORT`, `DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_NAME`, `DATABASE_USER`, `DATABASE_PASSWORD` | `8080`, `mariadb`, `3306`, `tasks`, `user`, `test` |
-| Task Dashboard | Frontend UI  | localhost | 5000         | `DASHBOARD_PORT`, `MANAGER_HOST`, `MANAGER_PORT`                                                        | `5000`, `manager`, `8080`                     |
+| Task Dashboard | Frontend UI  | localhost | 5000         | `DASHBOARD_PORT`, `MANAGER_HOST`, `MANAGER_PORT`                                                        | `5000`, `manager`, `8080`                      |
 
-Ensure ports are free before starting.
+Ensure the ports are free before starting.
 
-### Running the Application
+### Running the application
 
 - Default configuration:
     ```bash
-    docker-compose up -d
+    docker compose up -d
+    # If using older Docker:
+    # docker-compose up -d
     ```
+
+- Access endpoints (default):
+    - Dashboard: http://localhost:5000
+    - Manager API: http://localhost:8080
+    - MariaDB: localhost:3306
+
+Sample output:
+![Compose up output](./images/part4/image1.png)
+![Services running](./images/part4/image2.png)
 
 - Custom configuration via inline environment variables:
     ```bash
@@ -185,7 +215,7 @@ Ensure ports are free before starting.
     DATABASE_PASSWORD=mypass \
     MANAGER_PORT=9090 \
     DASHBOARD_PORT=6000 \
-    docker-compose up -d
+    docker compose up -d
     ```
 
 - Custom configuration via `.env` file:
@@ -200,10 +230,13 @@ Ensure ports are free before starting.
     ```
     Start with:
     ```bash
-    docker-compose --env-file .env.custom up -d
+    docker compose --env-file .env.custom up -d
     ```
 
-Got it! Here’s the rewritten Part V with the Minikube cluster startup first, followed by Istio installation, configuration, and application deployment.
+- Stop and clean up:
+    ```bash
+    docker compose down
+    ```
 
 ## Part V — Container Orchestration using Minikube & Istio
 
@@ -226,78 +259,198 @@ Before deploying the applications, ensure the following tools are installed:
 
 ### 2. Start Minikube Cluster
 
-1. Start the Minikube cluster:
+## Part V — Container Orchestration with Minikube and Istio
+
+Deploy Task Dashboard (frontend) and Task Manager (backend) locally on Kubernetes (Minikube) with Istio service mesh.
+
+---
+
+### Overview
+
+- Components
+    - task-dashboard (v1): frontend/UI
+    - task-manager (v1, v2): Spring Boot API
+    - mariadb (v1): database
+- Flow
+    - Browser → task-dashboard → task-manager Service → mariadb
+    - Istio sidecar injection enabled; traffic flows inside the mesh
+
+---
+
+### Traffic Management (Istio)
+
+- DestinationRule for task-manager with subsets:
+    - v1 and v2 selected via pod labels (e.g., `version: v1` / `version: v2`)
+- VirtualService for task-manager:
+    - 80% traffic to v1, 20% to v2
+- No external Ingress/Gateway; use `minikube service --url` for access as needed
+
+---
+
+### Observability
+
+- task-manager exposes metrics at `/actuator/prometheus`
+- Prometheus (Istio demo profile in `istio-system`) scrapes application metrics
+- Envoy sidecars emit telemetry used by Prometheus and Kiali
+
+---
+
+### Data Persistence
+
+- mariadb runs as a Deployment/Service
+- task-manager connects to mariadb for CRUD operations
+- Database traffic remains within the namespace
+
+---
+
+### 1) Prerequisites
+
+- Windows users: use WSL2
+- Install:
+    - kubectl: https://kubernetes.io/docs/tasks/tools/
+    - Minikube: https://minikube.sigs.k8s.io/docs/start/
+    - istioctl: https://istio.io/latest/docs/setup/getting-started/#download
+
+---
+
+### 2) Start Minikube
 
 ```bash
 minikube start
-
-
-Verify the cluster is running:
-
 kubectl get nodes
+```
 
+Sample output:
+![command output](./images/part5/image1.png)
 
-Make sure Minikube is running successfully before proceeding to Istio installation.
+---
 
-3. Install Istio
+### 3) Install Istio (demo profile)
 
-Download Istio and add istioctl to your PATH following the Istio installation guide.
-
-Verify the installation:
-
+```bash
 istioctl version
-
-
-Install Istio in the cluster (using the demo profile) — applications will be deployed in the default namespace:
-
 istioctl install --set profile=demo -y
+```
 
-4. Enable Istio in Default Namespace
+Sample output:
+![command output](./images/part5/image2.png)
 
-To automatically inject Istio sidecars into pods in the default namespace:
+Enable sidecar injection in the default namespace:
 
+```bash
 kubectl label namespace default istio-injection=enabled
-
-
-Verify the namespace label:
-
 kubectl get namespace -L istio-injection
+```
 
-5. Deploy Applications to Kubernetes
+Sample output:
+![command output](./images/part5/image3.png)
 
-Apply the Kubernetes manifests for the backend and frontend applications:
+---
 
-kubectl apply -f k8s/
+### 4) Deploy Applications
 
+Apply manifests:
 
-Check deployments and pods:
+```bash
+kubectl apply -k k8s/
+```
 
+Sample output:
+![command output](./images/part5/image4.png)
+
+Verify:
+
+```bash
 kubectl get deployments
 kubectl get pods
-
-
-Check services:
-
 kubectl get svc
+```
 
+Note: Pods will have 2 containers (app + Istio sidecar).
 
-Access services locally using Minikube:
+Sample output:
+![command output](./images/part5/image5.png)
 
-minikube service <service-name>
+---
 
+### 5) Configure Istio (traffic rules)
 
-Replace <service-name> with the name of the service you want to open (e.g., task-manager or task-dashboard).
+Apply mesh resources:
 
-6. Notes
+```bash
+kubectl apply -k istio/
+```
 
-All applications are deployed in the default namespace.
+Sample output:
+![command output](./images/part5/image6.png)
 
-Istio sidecar injection ensures traffic is routed through Istio, enabling observability and service mesh features.
+Verify Istio resources:
 
-Minikube allows you to test Kubernetes and Istio locally without a cloud provider.
+```bash
+kubectl get virtualservice
+kubectl get destinationrule
+kubectl get pods -n istio-system
+kubectl get svc -n istio-system
+```
 
-References:
+Sample output:
+![command output](./images/part5/image7.png)
 
-Minikube: https://minikube.sigs.k8s.io/docs/start/
+---
 
-Istio: https://istio.io/latest/docs/setup/getting-started/#download
+### 6) Access Services (minikube service --url)
+
+```bash
+minikube service <service-name> --url
+```
+
+Sample outputs:
+![command output](./images/part5/image8.png)
+![command output](./images/part5/image9.png)
+![command output](./images/part5/image10.png)
+![command output](./images/part5/image11.png)
+
+---
+
+### 7) Observability
+
+#### Prometheus
+
+Access Prometheus (istio-system):
+
+```bash
+minikube service -n istio-system prometheus --url
+```
+
+Sample output:
+![command output](./images/part5/image17.png)
+![command output](./images/part5/image16.png)
+
+#### Kiali
+
+Access Kiali (istio-system):
+
+```bash
+minikube service -n istio-system kiali --url
+```
+
+Get the Task Dashboard URL (in a separate terminal):
+
+```bash
+minikube service task-dashboard --url
+```
+
+Generate traffic to populate metrics (use the dashboard URL):
+
+```bash
+DASHBOARD_URL="<paste the URL>"
+while true; do
+    echo "$(date) - $(curl -s -o /dev/null -w "%{http_code}" "$DASHBOARD_URL")"
+    sleep 1
+done
+```
+
+Sample output:
+![command output](./images/part5/image14.png)
+![command output](./images/part5/image12.png)
+![command output](./images/part5/image13.png)

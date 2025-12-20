@@ -309,6 +309,7 @@ spec:
   selector:
     app.kubernetes.io/name: kiali
     app.kubernetes.io/instance: kiali
+  type: NodePort
 ...
 ---
 # Source: kiali-server/templates/deployment.yaml
