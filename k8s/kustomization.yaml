@@ -1,0 +1,15 @@
+resources:
+  - serviceaccounts/dashboard-sa.yaml
+  - serviceaccounts/manager-sa.yaml
+  - serviceaccounts/mariadb-sa.yaml
+  - services/dashboard.yaml
+  - services/manager.yaml
+  - services/mariadb.yaml
+  - deployments/dashboard-v1.yaml
+  - deployments/manager-v1.yaml
+  - deployments/manager-v2.yaml
+  - deployments/mariadb-v1.yaml
+  - pvc/mariadb-pvc.yaml
+  - configmaps/database-config.yaml
+  - configmaps/manager-config.yaml
+  - secrets/database-secret.yaml

@@ -1,0 +1,6 @@
+# Ignore Vagrant local state
+.vagrant/
+
+# Optional: ignore OS-specific files
+*.swp
+.DS_Store

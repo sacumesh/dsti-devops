@@ -1,0 +1,15 @@
+# Common variables shared across roles
+database_host: "127.0.0.1"
+database_port: "3306"
+database_name: tasks
+database_user: user
+database_password: test
+
+task_manager_host: "127.0.0.1"
+task_manager_port: "8080"
+
+task_dashboard_port: "5000"
+
+docker_users:
+  - vagrant
+  - "{{ ansible_user }}"

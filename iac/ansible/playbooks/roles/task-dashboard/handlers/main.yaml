@@ -1,0 +1,6 @@
+- name: Restart Task Dashboard service
+  systemd:
+    name: task-dashboard
+    state: restarted
+  become: true
+  listen: "Restart Task Dashboard"

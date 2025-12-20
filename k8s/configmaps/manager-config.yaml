@@ -1,0 +1,11 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: manager-config
+  namespace: default
+  labels:
+    app: manager
+data:
+  manager-host: "manager"
+  manager-port: "8080"

@@ -1,0 +1,126 @@
+# -----------------------------
+# Install system dependencies
+# -----------------------------
+- name: Install required packages
+  become: true
+  apt:
+    name:
+      - openjdk-17-jdk
+      - maven
+      - git
+    state: present
+    update_cache: yes
+
+- name: Ensure application directories exist
+  become: true
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - "{{ app_home }}"
+    - "/var/log/task-manager"
+
+# -----------------------------
+# Build Stage
+# -----------------------------
+- name: Determine repo name from URL
+  set_fact:
+    repo_name: "{{ repo_url | basename | regex_replace('\\.git$', '') }}"
+
+- name: Clone the repository
+  become: true
+  git:
+    repo: "{{ repo_url }}"
+    dest: "{{ ansible_env.HOME }}/{{ repo_name }}"
+    version: main
+    force: true
+    update: true
+
+- name: Build Spring Boot project
+  become: true
+  command: mvn clean package -DskipTests
+  args:
+    chdir: "{{ ansible_env.HOME }}/{{ repo_name }}"
+
+- name: Detect built JAR automatically
+  find:
+    paths: "{{ ansible_env.HOME }}/{{ repo_name }}/target"
+    patterns: "*.jar"
+    excludes: "*-original.jar"
+    recurse: no
+  register: jar_files
+
+- name: Fail if no JAR found
+  fail:
+    msg: "No JAR file found in target directory"
+  when: jar_files.files | length == 0
+
+- name: Copy JAR to app_home
+  become: true
+  copy:
+    src: "{{ jar_files.files[0].path }}"
+    dest: "{{ app_home }}/app.jar"
+    remote_src: yes
+    mode: '0644'
+  notify: "Restart Task Manager"
+
+- name: Delete repository directory
+  become: true
+  file:
+    path: "{{ ansible_env.HOME }}/{{ repo_name }}"
+    state: absent
+
+- name: Create systemd service for Spring Boot app
+  become: true
+  copy:
+    dest: /etc/systemd/system/task-manager.service
+    content: |
+      [Unit]
+      Description=Task Manager Spring Boot Application
+      After=network.target
+
+      [Service]
+      Type=simple
+      WorkingDirectory={{ app_home }}
+      ExecStart=/usr/bin/java -jar {{ app_home }}/app.jar
+      Environment="SERVER_PORT={{ task_manager_port }}"
+      Environment="DATABASE_HOST={{ database_host }}"
+      Environment="DATABASE_PORT={{ database_port }}"
+      Environment="DATABASE_NAME={{ database_name }}"
+      Environment="DATABASE_USER={{ database_user }}"
+      Environment="DATABASE_PASSWORD={{ database_password }}"
+      Restart=always
+      RestartSec=5
+      StandardOutput=file:/var/log/task-manager/app.log
+      StandardError=file:/var/log/task-manager/app.log
+
+      [Install]
+      WantedBy=multi-user.target
+  register: service_file
+
+# Reload systemd only if the service file changed
+- name: Reload systemd daemon
+  become: true
+  systemd:
+    daemon_reload: true
+  when: service_file.changed
+
+# Enable and start service only if the service file changed
+- name: Enable and start Task Manager service
+  become: true
+  systemd:
+    name: task-manager
+    state: started
+    enabled: true
+
+# 5. Wait for application to be healthy
+- name: Wait for application to be healthy
+  uri:
+    url: "http://127.0.0.1:{{ task_manager_port }}/actuator/health"
+    status_code: 200
+    timeout: 30
+  register: result
+  retries: 10
+  delay: 5
+  until: result.status == 200

@@ -1,0 +1,5 @@
+resources:
+  - destinationrules/manager-dr.yaml
+  - virtualservices/manager-traffic-dist-vs.yaml
+  - monitoring/prometheus.yaml
+  - monitoring/kiali.yaml
