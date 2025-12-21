@@ -22,8 +22,6 @@ DevOps project delivering a Task Manager web app with CRUD, MariaDB storage, aut
 Clone with submodules:
 ```bash
 git clone --recurse-submodules <this-repository-URL>
-# To get the URL:
-git remote get-url origin
 ```
 
 If already cloned:
