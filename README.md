@@ -201,7 +201,7 @@ Deploy Task Dashboard (frontend) and Task Manager (backend) locally on Kubernete
 
 ### Traffic Management (Istio)
 - DestinationRule for task-manager with subsets v1 and v2 (`version: v1` / `version: v2`)
-- VirtualService for task-manager: 80% to v1, 20% to v2
+- VirtualService for task-manager: 20% to v1, 80% to v2
 - No external Ingress/Gateway; use `minikube service --url` for access
 
 ### Observability
