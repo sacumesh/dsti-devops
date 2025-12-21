@@ -4,6 +4,7 @@
 DevOps project delivering a Task Manager web app with CRUD, MariaDB storage, automated tests, CI, local VM provisioning (Vagrant + Ansible), Docker images, and Kubernetes manifests for Minikube. No public cloud deployment is required.
 
 ## References
+- Author: Sachiththa KONARA MUDIYANSELAGE
 - dsti-task-manager
     - Repository: https://github.com/sacumesh/devops-task-manager
     - Docker images:
