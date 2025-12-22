@@ -324,3 +324,7 @@ Sample output:
 ![command output](./images/part5/image14.png)
 ![command output](./images/part5/image12.png)
 ![command output](./images/part5/image13.png)
+
+---
+### AI Usage
+AI was used during the project to troubleshoot errors, test quick ideas, refactor code, and in documenting the project
